@@ -19,6 +19,7 @@ def create_schema(cursor):
     amenities_sql = f'''
         CREATE TABLE amenities (
             id SERIAL PRIMARY KEY,
+            study_area_id INTEGER REFERENCES study_areas(id),
             name VARCHAR(200),
             category VARCHAR(100),
             geom Geometry(Point, {SRS_ID})
