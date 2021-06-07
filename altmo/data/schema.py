@@ -46,6 +46,10 @@ def create_schema(cursor):
     residences_sql = f'''
         CREATE TABLE residences (
             id SERIAL PRIMARY KEY,
+            study_area_id INTEGER REFERENCES study_areas(id),
+            tags HSTORE,
+            house_number VARCHAR(100),
+            building VARCHAR(100),
             geom Geometry(Point, {SRS_ID})
         )
     '''
@@ -55,6 +59,15 @@ def create_schema(cursor):
             residence_id INTEGER REFERENCES residences(id),
             amenity_id INTEGER REFERENCES amenities(id),
             distance INTEGER,
+            mode VARCHAR(10),
+            PRIMARY KEY (residence_id, amenity_id)
+        )
+    '''
+
+    residence_amenity_distances_straight_sql = f'''
+        CREATE TABLE residence_amenity_distances_straight (
+            residence_id INTEGER REFERENCES residences(id),
+            amenity_id INTEGER REFERENCES amenities(id),
             PRIMARY KEY (residence_id, amenity_id)
         )
     '''
@@ -76,15 +89,16 @@ def create_schema(cursor):
     cursor.execute(pop_density_sql)
     cursor.execute(residences_sql)
     cursor.execute(residence_amenity_distances_sql)
+    cursor.execute(residence_amenity_distances_straight_sql)
     cursor.execute(residence_amenity_standardized_sql)
 
 
 @psycopg2_cur(PG_DSN)
 def remove_schema(cursor):
-    cursor.execute('DROP TABLE residence_amenity_standardized')
-    cursor.execute('DROP TABLE residence_amenity_distances')
-    cursor.execute('DROP TABLE study_areas')
-    cursor.execute('DROP TABLE amenities')
-    cursor.execute('DROP TABLE traffic_flow')
-    cursor.execute('DROP TABLE pop_density')
-    cursor.execute('DROP TABLE residences')
+    cursor.execute('DROP TABLE residence_amenity_standardized CASCADE')
+    cursor.execute('DROP TABLE residence_amenity_distances CASCADE')
+    cursor.execute('DROP TABLE study_areas CASCADE')
+    cursor.execute('DROP TABLE amenities CASCADE')
+    cursor.execute('DROP TABLE traffic_flow CASCADE')
+    cursor.execute('DROP TABLE pop_density CASCADE')
+    cursor.execute('DROP TABLE residences CASCADE')
