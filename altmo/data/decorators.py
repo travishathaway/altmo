@@ -1,3 +1,4 @@
+import contextlib
 from functools import wraps
 
 import psycopg2
@@ -25,3 +26,17 @@ def psycopg2_cur(conn_info):
             return return_val
         return wrapper
     return wrap
+
+
+@contextlib.contextmanager
+def psycopg_context(conn_info):
+    # Setup postgres connection
+    connection = psycopg2.connect(conn_info)
+
+    try:
+        cursor = connection.cursor()
+        yield cursor
+    finally:
+        # Close connection
+        connection.commit()
+        connection.close()
