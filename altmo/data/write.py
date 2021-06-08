@@ -1,4 +1,7 @@
+from typing import List, Tuple
+
 from tqdm import tqdm
+from psycopg2.extras import execute_values
 
 from .read import get_amenity_names
 
@@ -233,3 +236,20 @@ def add_amenity_residence_distances_straight(cursor, study_area_id: int, show_st
     for amenity in amenities:
         sql = _get_amenity_residence_distance_straight_sql(amenity)
         cursor.execute(sql, (amenity, study_area_id))
+
+
+def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
+    """
+    adds network residence amenity distances
+
+    tuple needs to be in the following order:
+        distance, time, amenity_id, residence_id, mode
+    """
+    sql = '''
+        INSERT INTO 
+            residence_amenity_distances (distance, time, amenity_id, residence_id, mode)
+        VALUES %s
+    '''
+    execute_values(
+        cursor, sql, records, template=None, page_size=100
+    )

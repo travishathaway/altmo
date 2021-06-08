@@ -32,6 +32,7 @@ def get_amenity_names(cursor, study_area_id: int) -> List[str]:
     cursor.execute('SELECT DISTINCT name FROM amenities WHERE study_area_id = %s', (study_area_id, ))
     return [x for x, *_ in cursor.fetchall()]
 
+
 def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) -> int:
     sql = '''
         SELECT 
@@ -52,11 +53,21 @@ def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) ->
     return cursor.fetchone()[0]
 
 
-def get_residence_amenity_straight_distance(cursor, study_area_id: int, start: int, stop: int) -> List[Tuple]:
-    limit = stop - start
+def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
+    """fetch all residences for a study area"""
+    sql = '''
+        SELECT 
+            id, ST_X(ST_Transform(geom, 4326)), ST_Y(ST_Transform(geom, 4326))
+        FROM 
+            residences WHERE study_area_id = %s
+    '''
+    cursor.execute(sql, (study_area_id, ))
+    return cursor.fetchall()
+
+
+def get_residence_amenity_straight_distance(cursor, residence_id: int) -> List[Tuple]:
     sql = '''
     SELECT 
-        residence_id, ST_X(ST_Transform(re.geom, 4326)), ST_Y(ST_Transform(re.geom, 4326)),
         amenity_id, ST_X(ST_Transform(am.geom, 4326)), ST_Y(ST_Transform(am.geom, 4326))
     FROM 
         residence_amenity_distances_straight
@@ -64,17 +75,10 @@ def get_residence_amenity_straight_distance(cursor, study_area_id: int, start: i
         amenities am
     ON
         amenity_id = am.id
-    JOIN
-        residences re
-    ON
-        residence_id = re.id
     WHERE
-        re.study_area_id = %s
-    AND
-        am.study_area_id = %s
-    OFFSET %s LIMIT %s
+        residence_id = %s
     '''
 
-    cursor.execute(sql, (study_area_id, study_area_id, start, limit))
+    cursor.execute(sql, (residence_id, ))
 
     return cursor.fetchall()

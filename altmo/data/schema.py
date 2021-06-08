@@ -58,7 +58,8 @@ def create_schema(cursor):
         CREATE TABLE residence_amenity_distances (
             residence_id INTEGER REFERENCES residences(id),
             amenity_id INTEGER REFERENCES amenities(id),
-            distance INTEGER,
+            distance FLOAT,
+            time INTEGER,
             mode VARCHAR(10),
             PRIMARY KEY (residence_id, amenity_id)
         )
