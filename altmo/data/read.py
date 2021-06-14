@@ -27,10 +27,17 @@ def get_residences(cursor, study_area_id: int) -> List[Tuple]:
     return cursor.fetchall()
 
 
-def get_amenity_names(cursor, study_area_id: int) -> List[str]:
+def get_amenity_name_category(cursor, study_area_id: int, category=None) -> List[str]:
     """return all amenity names in amenity table for a single study_area"""
-    cursor.execute('SELECT DISTINCT name FROM amenities WHERE study_area_id = %s', (study_area_id, ))
-    return [x for x, *_ in cursor.fetchall()]
+    sql = 'SELECT DISTINCT name, category FROM amenities WHERE study_area_id = %s'
+    params = (study_area_id, )
+
+    if category:
+        sql += ' AND category = %s'
+        params += (category, )
+
+    cursor.execute(sql, params)
+    return cursor.fetchall()
 
 
 def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) -> int:

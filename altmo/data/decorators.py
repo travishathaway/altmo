@@ -30,6 +30,7 @@ def psycopg2_cur(conn_info):
 
 @contextlib.contextmanager
 def psycopg_context(conn_info):
+    """Context manager for PostgreSQL connections"""
     # Setup postgres connection
     connection = psycopg2.connect(conn_info)
 

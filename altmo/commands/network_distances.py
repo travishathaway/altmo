@@ -1,3 +1,4 @@
+import sys
 from multiprocessing import Pool
 from typing import Tuple, List
 from itertools import zip_longest
@@ -27,6 +28,9 @@ MODE_BICYCLE = 'bicycle'
 def network_distances(cursor, study_area, processes, mode):
     """calculate network distances between residences and amenities"""
     study_area_id, *_ = get_study_area(cursor, study_area)
+    if not study_area_id:
+        click.echo("study area not found")
+        sys.exit(1)
     residences = get_study_area_residences(cursor, study_area_id)
 
     # Organizes residence ids in to batches which the various processes will process

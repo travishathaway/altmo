@@ -98,6 +98,7 @@ def create_schema(cursor):
 def remove_schema(cursor):
     cursor.execute('DROP TABLE residence_amenity_standardized CASCADE')
     cursor.execute('DROP TABLE residence_amenity_distances CASCADE')
+    cursor.execute('DROP TABLE residence_amenity_distances_straight CASCADE')
     cursor.execute('DROP TABLE study_areas CASCADE')
     cursor.execute('DROP TABLE amenities CASCADE')
     cursor.execute('DROP TABLE traffic_flow CASCADE')

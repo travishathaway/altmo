@@ -3,7 +3,7 @@ from typing import List, Tuple
 from tqdm import tqdm
 from psycopg2.extras import execute_values
 
-from .read import get_amenity_names
+from .read import get_amenity_name_category
 
 AMENITY_CATEGORIES = {
     'school': (
@@ -52,7 +52,6 @@ AMENITY_CATEGORIES = {
     'community': (
         'community_centre',
         'social_facility',
-        'grave_yard',
         'library',
         'arts_centre',
         'parish_hall'
@@ -69,8 +68,16 @@ AMENITY_CATEGORIES = {
         'cinema',
         'restaurant',
         'fast_food'
-    )
+    ),
 }
+
+NATURE_AMENITIES = (
+    'park',
+    'forest',
+    'sports',
+    'cemetery',
+    'allotment'  # Schrebergartens fall into this category
+)
 
 AMENITY_CATEGORY_MAP = {
     amenity: category
@@ -109,7 +116,7 @@ def add_amenities(cursor, study_area_id: int) -> None:
     SELECT 
         amenity, ST_Centroid(way), {study_area_id}
     FROM 
-        planet_osm_point pp
+        planet_osm_polygon pp
     WHERE 
         ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
     AND
@@ -137,13 +144,66 @@ def add_amenities(cursor, study_area_id: int) -> None:
     SELECT 
         shop, ST_Centroid(way), {study_area_id}
     FROM 
-        planet_osm_point pp
+        planet_osm_polygon pp
     WHERE 
         ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
     AND
         shop IN ('{amenities}')
     '''
     cursor.execute(sql, (study_area_id, ))
+
+
+def add_natural_amenities(cursor, study_area_id: int) -> None:
+    """runs special queries that add natural amenities for a study area"""
+    sql = '''
+    SELECT
+        ST_Centroid(pp.way), landuse, leisure, "natural"
+    FROM
+        planet_osm_polygon pp
+    WHERE
+        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+    AND
+        ("access" is null OR "access" = 'yes')
+    AND (
+        "landuse" in (
+            'cemetery', 'recreation_ground', 'greenfield',
+            'allotments'
+        )
+        OR
+        "leisure" in ('park', 'playground')
+        OR
+        ("leisure" = 'pitch' AND "sport" is not null)
+        OR
+        (name like '%%Gehölz%%' and ("natural" = 'wood' or "landuse" = 'forest'))
+        OR
+        name like '%%Gehege%%' 
+        OR
+        ("landuse" = 'forest' AND "way_area" > 50000)
+    )
+    '''
+    cursor.execute(sql, (study_area_id, ))
+
+    records = []
+
+    # group the rows into "nature" categories
+    for geom, landuse, leisure, natural in cursor.fetchall():
+        if landuse == 'allotments':
+            records.append((geom, 'nature', 'allotment', study_area_id))
+        elif landuse == 'cemetery':
+            records.append((geom, 'nature', 'cemetery', study_area_id))
+        elif leisure == 'pitch' or landuse == 'recreation_ground':
+            records.append((geom, 'nature', 'sports', study_area_id))
+        elif landuse == 'forest' or natural == 'wood' or landuse == 'greenfield':
+            records.append((geom, 'nature', 'forest', study_area_id))
+        elif leisure == 'park' or leisure == 'playground':
+            records.append((geom, 'nature', 'park', study_area_id))
+
+    insert_sql = '''
+        INSERT INTO amenities (geom, category, name, study_area_id) VALUES %s
+    '''
+    execute_values(
+        cursor, insert_sql, records, template=None, page_size=100
+    )
 
 
 def add_amenities_category(cursor, study_area_id: int) -> None:
@@ -201,7 +261,7 @@ def delete_residences(cursor, study_area_id: int) -> None:
     cursor.execute(sql, (study_area_id, ))
 
 
-def _get_amenity_residence_distance_straight_sql(amenity):
+def _get_amenity_residence_distance_straight_sql(amenity: str, category: str) -> str:
     """get the SQL statement for the straight distance calculation"""
     return f'''
     INSERT INTO residence_amenity_distances_straight (residence_id, amenity_id)
@@ -209,7 +269,7 @@ def _get_amenity_residence_distance_straight_sql(amenity):
     re.id, (
         SELECT am.id
         FROM amenities am
-        WHERE am.name = %s
+        WHERE am.name = %s AND category = %s
         ORDER BY ST_Distance(re.geom, am.geom)
         LIMIT 1
     )
@@ -223,19 +283,20 @@ def _get_amenity_residence_distance_straight_sql(amenity):
     '''
 
 
-def add_amenity_residence_distances_straight(cursor, study_area_id: int, show_status: bool = False) -> None:
+def add_amenity_residence_distances_straight(
+        cursor, study_area_id: int, category: str = None, show_status: bool = False) -> None:
     """
     Finds the straight line distance amenity and residences.
     We only do this for the first amenity that we find.
     """
-    amenities = get_amenity_names(cursor, study_area_id)
+    amenities = get_amenity_name_category(cursor, study_area_id, category=category)
 
     if show_status:
         amenities = tqdm(amenities, unit='amenity')
 
-    for amenity in amenities:
-        sql = _get_amenity_residence_distance_straight_sql(amenity)
-        cursor.execute(sql, (amenity, study_area_id))
+    for amenity, category in amenities:
+        sql = _get_amenity_residence_distance_straight_sql(amenity, category)
+        cursor.execute(sql, (amenity, category, study_area_id))
 
 
 def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
