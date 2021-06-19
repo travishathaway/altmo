@@ -42,7 +42,7 @@ def network_distances(cursor, study_area, processes, mode):
         elif mode == MODE_BICYCLE:
             p.map(set_network_distances_bicycle, batches)
         else:
-            click.echo('invalid option supply for -m|--mode')
+            click.echo('invalid option supplied for -m|--mode')
 
 
 def set_network_distances(residence_ids: list, mode: str) -> None:
@@ -51,15 +51,28 @@ def set_network_distances(residence_ids: list, mode: str) -> None:
         residence_ids = [x for x in residence_ids if x]
         for res_id, res_lng, res_lat in residence_ids:
             if res_id:
-                am_dist = get_residence_amenity_straight_distance(cursor, res_id)
-                if am_dist:
-                    matrix_req = get_matrix_request((res_lat, res_lng), am_dist, costing=mode)
-                    resp = requests.post(VALHALLA_API_MATRIX_ENDPOINT, json=matrix_req)
-                    new_rows = []
+                set_residence_amenity_network_distances(cursor, res_id, res_lng, res_lat, mode)
 
-                    for [distance, *_], (amenity_id, *_) in zip(resp.json().get('sources_to_targets', []), am_dist):
-                        new_rows.append((distance['distance'], distance['time'], amenity_id, res_id, mode))
-                    add_amenity_residence_distance(cursor, new_rows)
+
+def set_residence_amenity_network_distances(
+        cursor, residence_id: int, residence_lng: float, residence_lat: float, mode: str) -> None:
+    """
+    Provided a residence, call the Valhalla API in batches of 50 and then
+    create new database records for the nearest amenity distances.
+    """
+    am_dist = get_residence_amenity_straight_distance(cursor, residence_id)
+    if am_dist:
+        batches = zip_longest(*(iter(am_dist),) * 50)  # split these records up into groups of 50
+
+        for batch in batches:
+            matrix_req = get_matrix_request((residence_lat, residence_lng), batch, costing=mode)
+            resp = requests.post(VALHALLA_API_MATRIX_ENDPOINT, json=matrix_req)
+            new_rows = []
+
+            for [distance, *_], (amenity_id, *_) in zip(resp.json().get('sources_to_targets', []), batch):
+                new_rows.append((distance['distance'], distance['time'], amenity_id, residence_id, mode))
+            add_amenity_residence_distance(cursor, new_rows)
+        cursor.connection.commit()
 
 
 def set_network_distances_bicycle(residence_ids: list) -> None:

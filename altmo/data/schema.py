@@ -12,7 +12,17 @@ def create_schema(cursor):
             id SERIAL PRIMARY KEY,
             name VARCHAR(100) UNIQUE,
             description TEXT,
-            geom Geometry(MultiPolygon, {SRS_ID})
+            geom Geometry(Geometry, {SRS_ID})
+        )
+    '''
+
+    study_areas_parts_sql = f'''
+        CREATE TABLE study_area_parts (
+            id SERIAL PRIMARY KEY,
+            study_area_id INTEGER REFERENCES study_areas(id),
+            name VARCHAR(100) UNIQUE,
+            description TEXT,
+            geom Geometry(Geometry, {SRS_ID})
         )
     '''
 
@@ -74,17 +84,20 @@ def create_schema(cursor):
     '''
 
     residence_amenity_standardized_sql = f'''
-        CREATE TABLE residence_amenity_standardized (
+        CREATE TABLE residence_amenity_distance_standardized (
             residence_id INTEGER REFERENCES residences(id),
-            amenity_id INTEGER REFERENCES amenities(id),
-            study_area_id INTEGER REFERENCES study_areas(id),
-            z_score FLOAT,
-            rank FLOAT,
-            PRIMARY KEY (residence_id, amenity_id, study_area_id)
+            amenity_category VARCHAR(100),
+            amenity_name VARCHAR(100),
+            time_zscore FLOAT,
+            distance_zscore FLOAT,
+            average_time FLOAT,
+            average_distance FLOAT,
+            PRIMARY KEY (residence_id, amenity_category, amenity_name)
         )
     '''
 
     cursor.execute(study_areas_sql)
+    cursor.execute(study_areas_parts_sql)
     cursor.execute(amenities_sql)
     cursor.execute(traffic_flow_sql)
     cursor.execute(pop_density_sql)
@@ -99,6 +112,7 @@ def remove_schema(cursor):
     cursor.execute('DROP TABLE residence_amenity_standardized CASCADE')
     cursor.execute('DROP TABLE residence_amenity_distances CASCADE')
     cursor.execute('DROP TABLE residence_amenity_distances_straight CASCADE')
+    cursor.execute('DROP TABLE study_area_parts CASCADE')
     cursor.execute('DROP TABLE study_areas CASCADE')
     cursor.execute('DROP TABLE amenities CASCADE')
     cursor.execute('DROP TABLE traffic_flow CASCADE')

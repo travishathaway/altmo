@@ -46,19 +46,15 @@ AMENITY_CATEGORIES = {
         'veterinary',
         'pharmacy',
         'dentist',
-        'emergency_service',
         'clinic'
     ),
     'community': (
         'community_centre',
         'social_facility',
         'library',
-        'arts_centre',
-        'parish_hall'
     ),
     'outing_destination': (
         'pub',
-        'biergarten',
         'cafe',
         'theatre',
         'nightclub',
@@ -157,7 +153,8 @@ def add_natural_amenities(cursor, study_area_id: int) -> None:
     """runs special queries that add natural amenities for a study area"""
     sql = '''
     SELECT
-        ST_Centroid(pp.way), landuse, leisure, "natural"
+        (ST_Dump(ST_GeneratePoints(pp.way, (ceil(pp.way_area/50000.0))::integer))).geom, 
+        landuse, leisure, "natural"
     FROM
         planet_osm_polygon pp
     WHERE
@@ -166,8 +163,7 @@ def add_natural_amenities(cursor, study_area_id: int) -> None:
         ("access" is null OR "access" = 'yes')
     AND (
         "landuse" in (
-            'cemetery', 'recreation_ground', 'greenfield',
-            'allotments'
+            'cemetery', 'recreation_ground', 'greenfield', 'allotments'
         )
         OR
         "leisure" in ('park', 'playground')
@@ -238,7 +234,7 @@ def add_residences(cursor, study_area_id: int) -> None:
       WHERE 
         landuse = 'residential'
       AND
-        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT ST_Buffer(geom, 100) from study_areas where id = %s), pp.way)
     )
     INSERT INTO residences (study_area_id, building, house_number, tags, geom)
     SELECT 
@@ -261,7 +257,7 @@ def delete_residences(cursor, study_area_id: int) -> None:
     cursor.execute(sql, (study_area_id, ))
 
 
-def _get_amenity_residence_distance_straight_sql(amenity: str, category: str) -> str:
+def _get_amenity_residence_distance_straight_sql() -> str:
     """get the SQL statement for the straight distance calculation"""
     return f'''
     INSERT INTO residence_amenity_distances_straight (residence_id, amenity_id)
@@ -273,13 +269,34 @@ def _get_amenity_residence_distance_straight_sql(amenity: str, category: str) ->
         ORDER BY ST_Distance(re.geom, am.geom)
         LIMIT 1
     )
-    FROM residences re
+    FROM 
+        residences re
     WHERE
-        "house_number" IS NOT NULL
-    AND
-        building IN ('yes', 'house', 'residential', 'apartments')
+        building IN ('yes', 'house', 'residential', 'apartments', 'terrace', 'detached')
     AND
         study_area_id = %s;
+    '''
+
+
+def _get_amenity_residence_distance_straight_top_three_sql() -> str:
+    return '''
+    INSERT INTO residence_amenity_distances_straight (residence_id, amenity_id)
+    SELECT rank_filter.residence_id, rank_filter.amenity_id FROM (
+        SELECT 
+            re.id as residence_id, am.id as amenity_id, ST_Distance(am.geom, re.geom),
+            rank() OVER (
+                PARTITION BY re.id
+                ORDER BY ST_Distance(am.geom, re.geom)
+            )
+        FROM
+            residences re, amenities am
+        WHERE
+            am.name = %s AND am.category = %s
+        AND
+            building IN ('yes', 'house', 'residential', 'apartments', 'terrace', 'detached')
+        AND
+            re.study_area_id = %s AND am.study_area_id = %s
+    ) rank_filter WHERE RANK <= 3;
     '''
 
 
@@ -295,8 +312,8 @@ def add_amenity_residence_distances_straight(
         amenities = tqdm(amenities, unit='amenity')
 
     for amenity, category in amenities:
-        sql = _get_amenity_residence_distance_straight_sql(amenity, category)
-        cursor.execute(sql, (amenity, category, study_area_id))
+        sql = _get_amenity_residence_distance_straight_top_three_sql()
+        cursor.execute(sql, (amenity, category, study_area_id, study_area_id))
 
 
 def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
@@ -314,3 +331,56 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
     execute_values(
         cursor, sql, records, template=None, page_size=100
     )
+
+
+def add_standardized_network_distances(cursor, study_area_id: int) -> None:
+    """
+    Creates a new table holding the standardized scores for distance and time
+    """
+    sql = '''
+    INSERT INTO  residence_amenity_distance_standardized 
+        (residence_id, amenity_category, amenity_name, average_time, average_distance, time_zscore, distance_zscore)
+    SELECT 
+        sub.residence_id, sub.amenity_category, sub.amenity_name, sub.avg_dist, sub.avg_time,
+        (sub.avg_dist - AVG(sub.avg_dist) over(PARTITION BY sub.amenity_category, sub.amenity_name)) 
+            / stddev_pop(sub.avg_dist) over(PARTITION BY sub.amenity_category, sub.amenity_name) as distance_zscore,
+        (sub.avg_time - AVG(sub.avg_time) over(PARTITION BY sub.amenity_category, sub.amenity_name)) 
+            / stddev_pop(sub.avg_time) over(PARTITION BY sub.amenity_category, sub.amenity_name) as time_zscore
+    FROM (
+        SELECT
+            d.residence_id, am.category as amenity_category, am.name as amenity_name,
+            CASE
+                WHEN 
+                    am.category = 'nature' OR am.category = 'school' 
+                THEN
+                    AVG(d.distance)
+                ELSE
+                    MIN(d.distance)
+            END avg_dist,
+            CASE
+                WHEN 
+                    am.category = 'nature' OR am.category = 'school' 
+                THEN
+                    AVG(d.time)
+                ELSE
+                    MIN(d.time)
+            END avg_time
+        FROM
+            residence_amenity_distances d
+        JOIN
+            residences r
+        ON
+            d.residence_id = r.id
+        JOIN
+            amenities am
+        ON
+            d.amenity_id = am.id
+        WHERE
+            r.study_area_id = %s AND am.study_area_id = %s
+        GROUP BY
+            d.residence_id, am.category, am.name
+    ) AS sub;
+    '''
+
+    cursor.execute(sql, (study_area_id, study_area_id))
+
