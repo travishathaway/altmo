@@ -1,3 +1,4 @@
+import json
 from typing import List, Tuple
 
 
@@ -91,123 +92,63 @@ def get_residence_amenity_straight_distance(cursor, residence_id: int) -> List[T
     return cursor.fetchall()
 
 
-def get_category_time_zscores(cursor, study_area_id: int) -> List[Tuple]:
+def get_study_area_parts_all_geojson(cursor, study_area_id: int) -> str:
     sql = '''
-    SELECT
-        d.residence_id,
-        SUM(
-            CASE
-                WHEN d.amenity_category = 'administrative'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'bank' OR d.amenity_name = 'post_box' OR d.amenity_name = 'town_hall'
-                        THEN d.time_zscore * 0.25
-                        WHEN d.amenity_name = 'police' OR d.amenity_name = 'post_office'
-                        THEN d.time_zscore * 0.125
-                    END
-            END
-        ) as administrative_time_zscore,
-            SUM(
-            CASE
-                WHEN d.amenity_category = 'community'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'community_centre' OR d.amenity_name = 'social_facility'
-                        THEN d.time_zscore * 0.333
-                        WHEN d.amenity_name = 'library'
-                        THEN d.time_zscore * 0.334
-                    END
-            END
-        ) as community_time_zscore,
-            SUM(
-            CASE
-                WHEN d.amenity_category = 'groceries'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'bakery' OR d.amenity_name = 'butcher'
-                        THEN d.time_zscore * 0.25
-                        WHEN d.amenity_name = 'supermarket'
-                        THEN d.time_zscore * 0.5
-                    END
-            END
-        ) as groceries_time_zscore,
-            SUM(
-            CASE
-                WHEN d.amenity_category = 'health'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'clinic' OR d.amenity_name = 'nursing_home' 
-                            OR d.amenity_name = 'veterinary'
-                        THEN d.time_zscore * 0.1
-                        WHEN d.amenity_name = 'dentist' OR d.amenity_name = 'hospital'
-                        THEN d.time_zscore * 0.15
-                        WHEN d.amenity_name = 'doctors' OR d.amenity_name = 'pharmacy'
-                        THEN d.time_zscore * 0.2
-                    END
-            END
-        ) as health_time_zscore,
-        SUM(
-            CASE
-                WHEN d.amenity_category = 'nature'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'allotment' OR d.amenity_name = 'cemetery'
-                        THEN d.time_zscore * 0.1
-                        WHEN d.amenity_name = 'forest'
-                        THEN d.time_zscore * 0.2
-                        WHEN d.amenity_name = 'park' OR d.amenity_name = 'sports'
-                        THEN d.time_zscore * 0.3
-                    END
-            END
-        ) as nature_time_zscore,
-        SUM(
-            CASE
-                WHEN d.amenity_category = 'outing_destination'
-                THEN d.time_zscore * 0.1
-            END
-        ) as outing_destination_zscore,
-        SUM(
-            CASE
-                WHEN d.amenity_category = 'school'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'driving_school' OR d.amenity_name = 'music_school' 
-                            OR d.amenity_name = 'research_institute'
-                        THEN d.time_zscore * 0.05
-                        WHEN d.amenity_name = 'college'
-                        THEN d.time_zscore * 0.125
-                        WHEN d.amenity_name = 'kindergarten'
-                        THEN d.time_zscore * 0.15
-                        WHEN d.amenity_name = 'university'
-                        THEN d.time_zscore * 0.175
-                        WHEN d.amenity_name = 'school' OR d.amenity_name = 'childcare'
-                        THEN d.time_zscore * 0.2
-                    END
-            END
-        ) as school_time_zscore,
-        SUM(
-            CASE
-                WHEN d.amenity_category = 'shopping'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'clothes'
-                        THEN d.time_zscore * 0.112
-                        ELSE d.time_zscore * 0.111
-                    END
-            END
-        ) as shopping_time_zscore
-    FROM
-        residence_amenity_distance_standardized d
-    JOIN
-        residences r
-    ON
-        r.id = d.residence_id
-    WHERE
-        r.study_area_id = %s
-    GROUP BY
-        d.residence_id
+    SELECT jsonb_build_object(
+        'type',     'FeatureCollection',
+        'features', jsonb_agg(feature)
+    )
+    FROM (
+        SELECT
+            json_build_object(
+                'type', 'Feature',
+                'id', id,
+                'geometry', ST_AsGeoJSON(ST_Transform(geom, 4326))::jsonb,
+                'properties', to_jsonb(row) - 'id' - 'geom'
+            ) AS feature
+        FROM (
+        SELECT
+            st.id, st.geom, st.name, st.description, 
+            AVG(sc.all_time_zscore) as all_time_zscore,
+            AVG(sc.all_distance_zscore) as all_distance_zscore,
+            AVG(sc.administrative_time_zscore) as administrative_time_zscore,
+            AVG(sc.administrative_distance_zscore) as administrative_distance_zscore,
+            AVG(sc.community_time_zscore) as community_time_zscore,
+            AVG(sc.community_distance_zscore) as community_distance_zscore,
+            AVG(sc.groceries_time_zscore) as groceries_time_zscore,
+            AVG(sc.groceries_distance_zscore) as groceries_distance_zscore,
+            AVG(sc.health_time_zscore) as health_time_zscore,
+            AVG(sc.health_distance_zscore) as health_distance_zscore,
+            AVG(sc.nature_time_zscore) as nature_time_zscore,
+            AVG(sc.nature_distance_zscore) as nature_distance_zscore,
+            AVG(sc.outing_destination_time_zscore) as outing_destination_time_zscore,
+            AVG(sc.outing_destination_distance_zscore) as outing_destination_distance_zscore,
+            AVG(sc.school_time_zscore) as school_time_zscore,
+            AVG(sc.school_distance_zscore) as school_distance_zscore,
+            AVG(sc.shopping_time_zscore) as shopping_time_zscore,
+            AVG(sc.shopping_distance_zscore) as shopping_distance_zscore
+        FROM
+            study_area_parts st
+        JOIN
+            residences r
+        ON
+            ST_Contains(st.geom, r.geom)
+        JOIN
+            residence_amenity_distance_standardized_categorized sc
+        ON
+            r.id = sc.residence_id
+        WHERE
+            st.study_area_id = %s AND r.study_area_id = %s
+        GROUP BY
+            st.id, st.geom, st.name, st.description
+        ) row) features;
     '''
 
-    cursor.execute(cursor, (study_area_id, ))
+    cursor.execute(sql, (study_area_id, study_area_id))
 
-    return cursor.fetchall()
+    result = cursor.fetchone()
+
+    if result:
+        return json.dumps(result[0])
+    else:
+        return json.dumps({})

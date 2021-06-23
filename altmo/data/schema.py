@@ -69,9 +69,9 @@ def create_schema(cursor):
             residence_id INTEGER REFERENCES residences(id),
             amenity_id INTEGER REFERENCES amenities(id),
             distance FLOAT,
-            time INTEGER,
+            time BIGINT,
             mode VARCHAR(10),
-            PRIMARY KEY (residence_id, amenity_id)
+            PRIMARY KEY (residence_id, amenity_id, mode)
         )
     '''
 
@@ -92,7 +92,34 @@ def create_schema(cursor):
             distance_zscore FLOAT,
             average_time FLOAT,
             average_distance FLOAT,
-            PRIMARY KEY (residence_id, amenity_category, amenity_name)
+            mode VARCHAR(10),
+            PRIMARY KEY (residence_id, amenity_category, amenity_name, mode)
+        )
+    '''
+
+    residence_amenity_standardized_categorized_sql = f'''
+        CREATE TABLE residence_amenity_distance_standardized_categorized (
+            residence_id INTEGER REFERENCES residences(id),
+            administrative_time_zscore FLOAT,
+            community_time_zscore FLOAT,
+            groceries_time_zscore FLOAT,
+            health_time_zscore FLOAT,
+            nature_time_zscore FLOAT,
+            outing_destination_time_zscore FLOAT,
+            school_time_zscore FLOAT,
+            shopping_time_zscore FLOAT,
+            all_time_zscore FLOAT,
+            administrative_distance_zscore FLOAT,
+            community_distance_zscore FLOAT,
+            groceries_distance_zscore FLOAT,
+            health_distance_zscore FLOAT,
+            nature_distance_zscore FLOAT,
+            outing_destination_distance_zscore FLOAT,
+            school_distance_zscore FLOAT,
+            shopping_distance_zscore FLOAT,
+            all_distance_zscore FLOAT,
+            mode VARCHAR(10),
+            PRIMARY KEY (residence_id, mode)
         )
     '''
 
@@ -105,10 +132,12 @@ def create_schema(cursor):
     cursor.execute(residence_amenity_distances_sql)
     cursor.execute(residence_amenity_distances_straight_sql)
     cursor.execute(residence_amenity_standardized_sql)
+    cursor.execute(residence_amenity_standardized_categorized_sql)
 
 
 @psycopg2_cur(PG_DSN)
 def remove_schema(cursor):
+    cursor.execute('DROP TABLE residence_amenity_standardized_categorized CASCADE')
     cursor.execute('DROP TABLE residence_amenity_standardized CASCADE')
     cursor.execute('DROP TABLE residence_amenity_distances CASCADE')
     cursor.execute('DROP TABLE residence_amenity_distances_straight CASCADE')

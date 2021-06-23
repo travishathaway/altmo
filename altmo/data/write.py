@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 from tqdm import tqdm
+import psycopg2
 from psycopg2.extras import execute_values
 
 from .read import get_amenity_name_category
@@ -328,20 +329,25 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
             residence_amenity_distances (distance, time, amenity_id, residence_id, mode)
         VALUES %s
     '''
-    execute_values(
-        cursor, sql, records, template=None, page_size=100
-    )
+    try:
+        execute_values(
+            cursor, sql, records, template=None, page_size=100
+        )
+    except Exception as exc:
+        print(records)
+        raise exc
 
 
-def add_standardized_network_distances(cursor, study_area_id: int) -> None:
+def add_standardized_network_distances(cursor, study_area_id: int, mode: str) -> None:
     """
     Creates a new table holding the standardized scores for distance and time
     """
     sql = '''
     INSERT INTO  residence_amenity_distance_standardized 
-        (residence_id, amenity_category, amenity_name, average_time, average_distance, time_zscore, distance_zscore)
+        (residence_id, amenity_category, amenity_name, mode,
+        average_time, average_distance, time_zscore, distance_zscore)
     SELECT 
-        sub.residence_id, sub.amenity_category, sub.amenity_name, sub.avg_dist, sub.avg_time,
+        sub.residence_id, sub.amenity_category, sub.amenity_name, %s as mode, sub.avg_dist, sub.avg_time,
         (sub.avg_dist - AVG(sub.avg_dist) over(PARTITION BY sub.amenity_category, sub.amenity_name)) 
             / stddev_pop(sub.avg_dist) over(PARTITION BY sub.amenity_category, sub.amenity_name) as distance_zscore,
         (sub.avg_time - AVG(sub.avg_time) over(PARTITION BY sub.amenity_category, sub.amenity_name)) 
@@ -377,10 +383,285 @@ def add_standardized_network_distances(cursor, study_area_id: int) -> None:
             d.amenity_id = am.id
         WHERE
             r.study_area_id = %s AND am.study_area_id = %s
+        AND
+            d.mode = %s
         GROUP BY
             d.residence_id, am.category, am.name
     ) AS sub;
     '''
 
-    cursor.execute(sql, (study_area_id, study_area_id))
+    cursor.execute(sql, (mode, study_area_id, study_area_id, mode))
 
+
+def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
+    sql = '''
+    INSERT INTO residence_amenity_distance_standardized_categorized (
+        residence_id,
+        administrative_time_zscore, community_time_zscore, groceries_time_zscore,
+        health_time_zscore, nature_time_zscore, outing_destination_time_zscore, school_time_zscore,
+        shopping_time_zscore,
+        administrative_distance_zscore, community_distance_zscore, groceries_distance_zscore,
+        health_distance_zscore, nature_distance_zscore, outing_destination_distance_zscore, school_distance_zscore,
+        shopping_distance_zscore,
+        mode
+    )
+    SELECT
+        d.residence_id,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'administrative'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'bank' OR d.amenity_name = 'post_box' OR d.amenity_name = 'town_hall'
+                        THEN d.time_zscore * 0.25
+                        WHEN d.amenity_name = 'police' OR d.amenity_name = 'post_office'
+                        THEN d.time_zscore * 0.125
+                    END
+            END
+        ) as administrative_time_zscore,
+            SUM(
+            CASE
+                WHEN d.amenity_category = 'community'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'community_centre' OR d.amenity_name = 'social_facility'
+                        THEN d.time_zscore * 0.333
+                        WHEN d.amenity_name = 'library'
+                        THEN d.time_zscore * 0.334
+                    END
+            END
+        ) as community_time_zscore,
+            SUM(
+            CASE
+                WHEN d.amenity_category = 'groceries'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'bakery' OR d.amenity_name = 'butcher'
+                        THEN d.time_zscore * 0.25
+                        WHEN d.amenity_name = 'supermarket'
+                        THEN d.time_zscore * 0.5
+                    END
+            END
+        ) as groceries_time_zscore,
+            SUM(
+            CASE
+                WHEN d.amenity_category = 'health'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'clinic' OR d.amenity_name = 'nursing_home' 
+                            OR d.amenity_name = 'veterinary'
+                        THEN d.time_zscore * 0.1
+                        WHEN d.amenity_name = 'dentist' OR d.amenity_name = 'hospital'
+                        THEN d.time_zscore * 0.15
+                        WHEN d.amenity_name = 'doctors' OR d.amenity_name = 'pharmacy'
+                        THEN d.time_zscore * 0.2
+                    END
+            END
+        ) as health_time_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'nature'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'allotment' OR d.amenity_name = 'cemetery'
+                        THEN d.time_zscore * 0.1
+                        WHEN d.amenity_name = 'forest'
+                        THEN d.time_zscore * 0.2
+                        WHEN d.amenity_name = 'park' OR d.amenity_name = 'sports'
+                        THEN d.time_zscore * 0.3
+                    END
+            END
+        ) as nature_time_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'outing_destination'
+                THEN d.time_zscore * 0.1
+            END
+        ) as outing_destination_time_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'school'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'driving_school' OR d.amenity_name = 'music_school' 
+                            OR d.amenity_name = 'research_institute'
+                        THEN d.time_zscore * 0.05
+                        WHEN d.amenity_name = 'college'
+                        THEN d.time_zscore * 0.125
+                        WHEN d.amenity_name = 'kindergarten'
+                        THEN d.time_zscore * 0.15
+                        WHEN d.amenity_name = 'university'
+                        THEN d.time_zscore * 0.175
+                        WHEN d.amenity_name = 'school' OR d.amenity_name = 'childcare'
+                        THEN d.time_zscore * 0.2
+                    END
+            END
+        ) as school_time_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'shopping'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'clothes'
+                        THEN d.time_zscore * 0.112
+                        ELSE d.time_zscore * 0.111
+                    END
+            END
+        ) as shopping_time_zscore,
+        -- Distance zscores
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'administrative'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'bank' OR d.amenity_name = 'post_box' OR d.amenity_name = 'town_hall'
+                        THEN d.distance_zscore * 0.25
+                        WHEN d.amenity_name = 'police' OR d.amenity_name = 'post_office'
+                        THEN d.distance_zscore * 0.125
+                    END
+            END
+        ) as administrative_distance_zscore,
+            SUM(
+            CASE
+                WHEN d.amenity_category = 'community'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'community_centre' OR d.amenity_name = 'social_facility'
+                        THEN d.distance_zscore * 0.333
+                        WHEN d.amenity_name = 'library'
+                        THEN d.distance_zscore * 0.334
+                    END
+            END
+        ) as community_distance_zscore,
+            SUM(
+            CASE
+                WHEN d.amenity_category = 'groceries'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'bakery' OR d.amenity_name = 'butcher'
+                        THEN d.distance_zscore * 0.25
+                        WHEN d.amenity_name = 'supermarket'
+                        THEN d.distance_zscore * 0.5
+                    END
+            END
+        ) as groceries_distance_zscore,
+            SUM(
+            CASE
+                WHEN d.amenity_category = 'health'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'clinic' OR d.amenity_name = 'nursing_home' 
+                            OR d.amenity_name = 'veterinary'
+                        THEN d.distance_zscore * 0.1
+                        WHEN d.amenity_name = 'dentist' OR d.amenity_name = 'hospital'
+                        THEN d.distance_zscore * 0.15
+                        WHEN d.amenity_name = 'doctors' OR d.amenity_name = 'pharmacy'
+                        THEN d.distance_zscore * 0.2
+                    END
+            END
+        ) as health_distance_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'nature'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'allotment' OR d.amenity_name = 'cemetery'
+                        THEN d.distance_zscore * 0.1
+                        WHEN d.amenity_name = 'forest'
+                        THEN d.distance_zscore * 0.2
+                        WHEN d.amenity_name = 'park' OR d.amenity_name = 'sports'
+                        THEN d.distance_zscore * 0.3
+                    END
+            END
+        ) as nature_distance_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'outing_destination'
+                THEN d.distance_zscore * 0.1
+            END
+        ) as outing_destination_distance_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'school'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'driving_school' OR d.amenity_name = 'music_school' 
+                            OR d.amenity_name = 'research_institute'
+                        THEN d.distance_zscore * 0.05
+                        WHEN d.amenity_name = 'college'
+                        THEN d.distance_zscore * 0.125
+                        WHEN d.amenity_name = 'kindergarten'
+                        THEN d.distance_zscore * 0.15
+                        WHEN d.amenity_name = 'university'
+                        THEN d.distance_zscore * 0.175
+                        WHEN d.amenity_name = 'school' OR d.amenity_name = 'childcare'
+                        THEN d.distance_zscore * 0.2
+                    END
+            END
+        ) as school_distance_zscore,
+        SUM(
+            CASE
+                WHEN d.amenity_category = 'shopping'
+                THEN
+                    CASE
+                        WHEN d.amenity_name = 'clothes'
+                        THEN d.distance_zscore * 0.112
+                        ELSE d.distance_zscore * 0.111
+                    END
+            END
+        ) as shopping_distance_zscore,
+        %s as mode
+    FROM
+        residence_amenity_distance_standardized d
+    JOIN
+        residences r
+    ON
+        r.id = d.residence_id
+    WHERE
+        r.study_area_id = %s
+    AND
+        d.mode = %s
+    GROUP BY
+        d.residence_id
+    '''
+
+    cursor.execute(sql, (mode, study_area_id, mode))
+
+
+def add_category_time_zscores_all(cursor, study_area_id: int, mode: str) -> None:
+    """updates the `all_*` columns in the `"residence_amenity_distance_standardized_categorized`"""
+    sql = '''
+    UPDATE
+        residence_amenity_distance_standardized_categorized s
+    SET
+        all_time_zscore = (
+            administrative_time_zscore * 0.125 +
+            community_time_zscore * 0.125 +
+            groceries_time_zscore * 0.125 +
+            health_time_zscore * 0.125 +
+            nature_time_zscore * 0.125 +
+            outing_destination_time_zscore * 0.125 +
+            school_time_zscore * 0.125 +
+            shopping_time_zscore * 0.125
+        ),
+        all_distance_zscore = (
+            administrative_distance_zscore * 0.125 +
+            community_distance_zscore * 0.125 +
+            groceries_distance_zscore * 0.125 +
+            health_distance_zscore * 0.125 +
+            nature_distance_zscore * 0.125 +
+            outing_destination_distance_zscore * 0.125 +
+            school_distance_zscore * 0.125 +
+            shopping_distance_zscore * 0.125
+        )
+    FROM
+        residences AS r
+    WHERE
+        s.residence_id = r.id
+    AND
+        r.study_area_id = %s
+    AND
+        s.mode = %s
+    '''
+
+    cursor.execute(sql, (study_area_id, mode))
