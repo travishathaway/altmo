@@ -154,7 +154,7 @@ def get_study_area_parts_all_geojson(cursor, study_area_id: int) -> str:
         return json.dumps({})
 
 
-def get_residence_points_time_zscore_geojson(cursor, study_area_id: int) -> str:
+def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: str) -> str:
     sql = '''
     SELECT jsonb_build_object(
         'type',     'FeatureCollection',
@@ -165,30 +165,30 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int) -> str:
             json_build_object(
                 'type',       'Feature',
                 'id',         id,
-                'geometry',   ST_AsGeoJSON(ST_Transform(geom, 4326))::jsonb,
+                'geometry',   ST_AsGeoJSON(geom)::jsonb,
                 'properties', to_jsonb(row) - 'id' - 'geom'
             ) AS feature
         FROM (
         SELECT
             r.id, r.geom,
-            AVG(sc.all_time_zscore) as all_time_zscore,
-            AVG(sc.all_distance_zscore) as all_distance_zscore
-            -- AVG(sc.administrative_time_zscore) as administrative_time_zscore,
-            -- AVG(sc.administrative_distance_zscore) as administrative_distance_zscore,
-            -- AVG(sc.community_time_zscore) as community_time_zscore,
-            -- AVG(sc.community_distance_zscore) as community_distance_zscore,
-            -- AVG(sc.groceries_time_zscore) as groceries_time_zscore,
-            -- AVG(sc.groceries_distance_zscore) as groceries_distance_zscore,
-            -- AVG(sc.health_time_zscore) as health_time_zscore,
-            -- AVG(sc.health_distance_zscore) as health_distance_zscore,
-            -- AVG(sc.nature_time_zscore) as nature_time_zscore,
-            -- AVG(sc.nature_distance_zscore) as nature_distance_zscore,
-            -- AVG(sc.outing_destination_time_zscore) as outing_destination_time_zscore,
-            -- AVG(sc.outing_destination_distance_zscore) as outing_destination_distance_zscore,
-            -- AVG(sc.school_time_zscore) as school_time_zscore,
-            -- AVG(sc.school_distance_zscore) as school_distance_zscore,
-            -- AVG(sc.shopping_time_zscore) as shopping_time_zscore,
-            -- AVG(sc.shopping_distance_zscore) as shopping_distance_zscore
+            sc.all_time_zscore,
+            sc.all_average_time,
+            sc.administrative_time_zscore,
+            sc.administrative_average_time,
+            sc.community_time_zscore,
+            sc.community_average_time,
+            sc.groceries_time_zscore,
+            sc.groceries_average_time,
+            sc.health_time_zscore,
+            sc.health_average_time,
+            sc.nature_time_zscore,
+            sc.nature_average_time,
+            sc.outing_destination_time_zscore,
+            sc.outing_destination_average_time,
+            sc.school_time_zscore,
+            sc.school_average_time,
+            sc.shopping_time_zscore,
+            sc.shopping_average_time
         FROM
             residences r
         JOIN
@@ -197,12 +197,12 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int) -> str:
             r.id = sc.residence_id
         WHERE
             r.study_area_id = %s
-        GROUP BY
-            r.id, r.geom
+        AND
+            sc.mode = %s
         ) row) features;
     '''
 
-    cursor.execute(sql, (study_area_id, ))
+    cursor.execute(sql, (study_area_id, mode))
 
     result = cursor.fetchone()
 

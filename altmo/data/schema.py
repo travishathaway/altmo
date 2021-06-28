@@ -1,8 +1,6 @@
-from altmo.settings import PG_DSN
+from altmo.settings import PG_DSN, SRS_ID
 
 from .decorators import psycopg2_cur
-
-SRS_ID = '3857'
 
 
 @psycopg2_cur(PG_DSN)

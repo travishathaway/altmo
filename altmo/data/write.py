@@ -339,7 +339,7 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
 
 def add_standardized_network_distances(cursor, study_area_id: int, mode: str) -> None:
     """
-    Creates a new table holding the standardized scores for distance and time
+    Inserts new records in the table holding the standardized scores for distance and time
     """
     sql = '''
     INSERT INTO  residence_amenity_distance_standardized 

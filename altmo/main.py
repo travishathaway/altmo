@@ -8,6 +8,8 @@ from altmo.commands.network_distances import network_distances
 from altmo.commands.straight_distances import straight_distance
 from altmo.commands.calculate_zscores import calculate_zscores
 from altmo.commands.export import export
+from altmo.commands.raster_rough import raster_rough
+from altmo.commands.raster import raster
 
 
 @click.group()
@@ -23,6 +25,8 @@ cli.add_command(network_distances)
 cli.add_command(straight_distance)
 cli.add_command(calculate_zscores)
 cli.add_command(export)
+cli.add_command(raster)
+cli.add_command(raster_rough)
 
 
 if __name__ == '__main__':
