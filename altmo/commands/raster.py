@@ -3,7 +3,7 @@ from typing import List, Tuple
 import json
 
 import click
-import gdal
+from osgeo import gdal
 
 from altmo.settings import PG_DSN, SRS_ID
 from altmo.data.decorators import psycopg2_cur

@@ -11,9 +11,9 @@ requests = "^2.25.1"
 psycopg2 = "^2.8.6"
 click = "^8.0.1"
 tqdm = "^4.61.0"
-GDAL = "3.0.4"
 numpy = "^1.21.0"
 rasterio = "^1.2.6"
+GDAL = "3.2.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

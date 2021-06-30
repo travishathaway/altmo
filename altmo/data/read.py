@@ -28,7 +28,7 @@ def get_residences(cursor, study_area_id: int) -> List[Tuple]:
     return cursor.fetchall()
 
 
-def get_amenity_name_category(cursor, study_area_id: int, category=None) -> List[str]:
+def get_amenity_name_category(cursor, study_area_id: int, category=None, name=None) -> List[str]:
     """return all amenity names in amenity table for a single study_area"""
     sql = 'SELECT DISTINCT name, category FROM amenities WHERE study_area_id = %s'
     params = (study_area_id,)
@@ -36,6 +36,10 @@ def get_amenity_name_category(cursor, study_area_id: int, category=None) -> List
     if category:
         sql += ' AND category = %s'
         params += (category,)
+
+    if name:
+        sql += ' AND name = %s'
+        params += (name, )
 
     cursor.execute(sql, params)
     return cursor.fetchall()
@@ -73,7 +77,8 @@ def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
     return cursor.fetchall()
 
 
-def get_residence_amenity_straight_distance(cursor, residence_id: int) -> List[Tuple]:
+def get_residence_amenity_straight_distance(
+        cursor, residence_id: int, category: str = None, name: str = None) -> List[Tuple]:
     sql = '''
     SELECT 
         amenity_id, ST_X(ST_Transform(am.geom, 4326)), ST_Y(ST_Transform(am.geom, 4326))
@@ -86,8 +91,17 @@ def get_residence_amenity_straight_distance(cursor, residence_id: int) -> List[T
     WHERE
         residence_id = %s
     '''
+    params = (residence_id, )
 
-    cursor.execute(sql, (residence_id,))
+    if category is not None:
+        sql += ' AND am.category = %s'
+        params += (category, )
+
+    if name is not None:
+        sql += ' AND am.name = %s'
+        params += (name, )
+
+    cursor.execute(sql, params)
 
     return cursor.fetchall()
 

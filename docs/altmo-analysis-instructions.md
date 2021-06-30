@@ -132,7 +132,7 @@ The longest step comes next, and this is the step where we calculate the network
 pairs. This is accomplished with the following command:
 
 ```bash
-altmo network <study_area_name> --processes <num_processes> --mode <mode:walking,bicycle>
+altmo network <study_area_name> --processes <num_processes> --mode <mode:pedestrian,bicycle>
 ```
 
 This command has a couple different options. `--processes` determines how many parallel processes will be run
@@ -145,7 +145,7 @@ At this point, we can calculate our z-scores and weighted averages for time and 
 two commands:
 
 ```bash
-altmo zscores <study_area_name> --mode <mode:walking,bicycle> -l single
+altmo zscores <study_area_name> --mode <mode:pedestrian,bicycle> -l single
 ```
 
 This calculates the unweighted z-scores for each residence as well as average time and average distance and saves it in
@@ -154,7 +154,7 @@ a table called `residence_amenity_distance_standardized`.
 The next command stores the categorized and weighted averages and z-scores for time:
 
 ```bash
-altmo zscores <study_area_name> --mode <mode:walking,bicycle> -l category
+altmo zscores <study_area_name> --mode <mode:pedestrian,bicycle> -l category
 ```
 
 Congratulations! You have just finished the last step! Next we will cover exporting and visualizing the results.

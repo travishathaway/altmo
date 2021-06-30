@@ -52,6 +52,7 @@ AMENITY_CATEGORIES = {
         'community_centre',
         'social_facility',
         'library',
+        'place_of_worship'
     ),
     'outing_destination': (
         'pub',
@@ -245,7 +246,7 @@ def add_residences(cursor, study_area_id: int) -> None:
     WHERE
       ST_Within(p.way, boundary.way)
     AND
-      p.building IS NOT NULL;
+      p.building IS NOT NULL
     '''
 
     cursor.execute(sql, (study_area_id, ))
@@ -301,12 +302,13 @@ def _get_amenity_residence_distance_straight_top_three_sql() -> str:
 
 
 def add_amenity_residence_distances_straight(
-        cursor, study_area_id: int, category: str = None, show_status: bool = False) -> None:
+        cursor, study_area_id: int, category: str = None, name: str = None,
+        show_status: bool = False) -> None:
     """
     Finds the straight line distance amenity and residences.
     We only do this for the first amenity that we find.
     """
-    amenities = get_amenity_name_category(cursor, study_area_id, category=category)
+    amenities = get_amenity_name_category(cursor, study_area_id, category=category, name=name)
 
     if show_status:
         amenities = tqdm(amenities, unit='amenity')
@@ -423,13 +425,7 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
             SUM(
             CASE
                 WHEN d.amenity_category = 'community'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'community_centre' OR d.amenity_name = 'social_facility'
-                        THEN d.time_zscore * 0.333
-                        WHEN d.amenity_name = 'library'
-                        THEN d.time_zscore * 0.334
-                    END
+                THEN d.time_zscore * 0.25
             END
         ) as community_time_zscore,
             SUM(
@@ -509,7 +505,7 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
                     END
             END
         ) as shopping_time_zscore,
-        -- Distance zscores
+        -- Average time
         SUM(
             CASE
                 WHEN d.amenity_category = 'administrative'
@@ -527,13 +523,7 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
             SUM(
             CASE
                 WHEN d.amenity_category = 'community'
-                THEN
-                    CASE
-                        WHEN d.amenity_name = 'community_centre' OR d.amenity_name = 'social_facility'
-                        THEN d.average_time * 0.333
-                        WHEN d.amenity_name = 'library'
-                        THEN d.average_time * 0.334
-                    END
+                THEN d.time_zscore * 0.25
             END
         ) as community_average_time,
             SUM(

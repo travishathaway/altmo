@@ -3,9 +3,8 @@ import math
 from typing import List, Tuple
 
 import click
-import gdal
-import ogr
-import osr
+from osgeo import gdal
+from osgeo import osr
 import numpy as np
 
 from altmo.settings import PG_DSN, SRS_ID
