@@ -34,7 +34,7 @@ AVAILABLE_FIELDS = (
 @click.command('raster')
 @click.argument('study_area')
 @click.argument('outfile')
-@click.option('-m', '--mode', default='walking')
+@click.option('-m', '--mode', default='pedestrian')
 @click.option('-f', '--field', default='all_average_time')
 @click.option('-r', '--resolution', default=100)
 @psycopg2_cur(PG_DSN)

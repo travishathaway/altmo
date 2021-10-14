@@ -9,19 +9,36 @@ def get_study_area(cursor, name) -> tuple:
     return cursor.fetchone() or (None, None)
 
 
-def get_residences(cursor, study_area_id: int) -> List[Tuple]:
+def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List[Tuple]:
     """get all the residences for a study area"""
-    sql = '''
+    if with_stats:
+        extra_join = '''
+            JOIN residence_amenity_distance_standardized_categorized c
+            ON r.id = c.residence_id
+            JOIN study_area_parts p
+            ON ST_Contains(p.geom, r.geom)
+        '''
+        extra_flds = '''
+            , c.administrative_average_time, c.community_average_time, c.groceries_average_time,
+            c.health_average_time, c.nature_average_time, c.outing_destination_average_time,
+            c.school_average_time, c.shopping_average_time, c.all_average_time,
+            c.mode, p.name, p.description
+        '''
+    else:
+        extra_join = ''
+        extra_flds = ''
+    sql = f'''
     SELECT
-        id, study_area_id, tags, house_number, building, geom
+        r.id, r.study_area_id, r.tags, r.house_number, r.building, r.geom {extra_flds}
     FROM
-        residences
+        residences r
+    {extra_join}
     WHERE
         "house_number" IS NOT NULL
     AND
         building IN ('yes', 'house', 'residential', 'apartments')
     AND
-        study_area_id = %s
+        r.study_area_id = %s
     '''
     cursor.execute(sql, (study_area_id,))
 
@@ -179,7 +196,7 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: s
             json_build_object(
                 'type',       'Feature',
                 'id',         id,
-                'geometry',   ST_AsGeoJSON(geom)::jsonb,
+                'geometry',   ST_AsGeoJSON(ST_Transform(geom, 4326))::jsonb,
                 'properties', to_jsonb(row) - 'id' - 'geom'
             ) AS feature
         FROM (

@@ -335,7 +335,6 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
             cursor, sql, records, template=None, page_size=100
         )
     except Exception as exc:
-        print(records)
         raise exc
 
 
@@ -433,10 +432,10 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
                 WHEN d.amenity_category = 'groceries'
                 THEN
                     CASE
-                        WHEN d.amenity_name = 'bakery' OR d.amenity_name = 'butcher'
+                        WHEN d.amenity_name = 'bakery'
                         THEN d.time_zscore * 0.25
                         WHEN d.amenity_name = 'supermarket'
-                        THEN d.time_zscore * 0.5
+                        THEN d.time_zscore * 0.75
                     END
             END
         ) as groceries_time_zscore,
@@ -481,8 +480,7 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
                 THEN
                     CASE
                         WHEN d.amenity_name = 'driving_school' OR d.amenity_name = 'music_school' 
-                            OR d.amenity_name = 'research_institute'
-                        THEN d.time_zscore * 0.05
+                        THEN d.time_zscore * 0.075
                         WHEN d.amenity_name = 'college'
                         THEN d.time_zscore * 0.125
                         WHEN d.amenity_name = 'kindergarten'
@@ -523,7 +521,7 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
             SUM(
             CASE
                 WHEN d.amenity_category = 'community'
-                THEN d.time_zscore * 0.25
+                THEN d.average_time * 0.25
             END
         ) as community_average_time,
             SUM(
@@ -531,10 +529,10 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
                 WHEN d.amenity_category = 'groceries'
                 THEN
                     CASE
-                        WHEN d.amenity_name = 'bakery' OR d.amenity_name = 'butcher'
+                        WHEN d.amenity_name = 'bakery'
                         THEN d.average_time * 0.25
                         WHEN d.amenity_name = 'supermarket'
-                        THEN d.average_time * 0.5
+                        THEN d.average_time * 0.75
                     END
             END
         ) as groceries_average_time,

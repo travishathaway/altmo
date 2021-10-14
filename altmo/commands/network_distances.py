@@ -1,4 +1,5 @@
 import sys
+import json
 from multiprocessing import Pool
 from typing import Tuple, List
 from itertools import zip_longest
@@ -80,8 +81,10 @@ def set_residence_amenity_network_distances(
                 new_rows.append((distance['distance'], distance['time'], amenity_id, residence_id, mode))
             try:
                 add_amenity_residence_distance(cursor, new_rows)
-            except psycopg2.errors.UniqueViolation:
+            except Exception as exc:
                 # Inefficient, but allows us to recover from errors when the process fails
+                click.echo(exc)
+                click.echo(json.dumps(matrix_req))
                 continue
         cursor.connection.commit()
 

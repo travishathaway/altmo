@@ -3,7 +3,7 @@
 ## Summary
 
 This document is meant to give myself detailed instructions for how to do the analysis process for AltMo. In essence, 
-it requires first choosing a city/study area, collecting the necessary data for and then running through the steps in 
+it requires first choosing a city/study area, collecting the necessary data for it and then running through the steps in 
 order. These steps and data collection are detailed below.
 
 ## Selecting a city/study area
