@@ -15,7 +15,7 @@ from altmo.data.schema import psycopg2_cur
 @click.option('-s', '--show-status', is_flag=True)
 @psycopg2_cur(PG_DSN)
 def build(cursor, study_area, show_status):
-    """Builds database of amenities and residences from OSM data"""
+    """Builds a database of amenities and residences from OSM data"""
     study_area_id, *_ = get_study_area(cursor, study_area)
 
     if study_area_id:
