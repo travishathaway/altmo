@@ -12,15 +12,15 @@ from altmo.settings import PG_DSN
 @click.argument('boundary',  type=click.File('r'))
 @click.argument('name', type=str)
 @click.argument('description', type=str)
+@click.argument('srs_id', type=int)
 @psycopg2_cur(PG_DSN)
-def create_study_area(cursor, boundary, name, description):
+def create_study_area(cursor, boundary, name, description, srs_id):
     """
     (Create Study Area) import geojson boundary into our study_areas table
     """
     data = json.loads(boundary.read())
 
     try:
-        srs_id = data['crs']['properties']['name'][-4:]
         sql = f'''
             INSERT INTO study_areas (name, description, geom)
             VALUES (%s, %s, ST_SetSRID(ST_GeomFromGeoJSON(%s), {srs_id}))
