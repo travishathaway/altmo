@@ -179,8 +179,8 @@ def get_study_area_parts_all_geojson(cursor, study_area_id: int) -> str:
         return json.dumps({})
 
 
-def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: str) -> str:
-    sql = '''
+def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: str, srs_id: str = '4326') -> str:
+    sql = f'''
     SELECT jsonb_build_object(
         'type',     'FeatureCollection',
         'features', jsonb_agg(feature)
@@ -190,7 +190,7 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: s
             json_build_object(
                 'type',       'Feature',
                 'id',         id,
-                'geometry',   ST_AsGeoJSON(ST_Transform(geom, 4326))::jsonb,
+                'geometry',   ST_AsGeoJSON(ST_Transform(geom, {srs_id}))::jsonb,
                 'properties', to_jsonb(row) - 'id' - 'geom'
             ) AS feature
         FROM (

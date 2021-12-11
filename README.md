@@ -7,8 +7,8 @@ Specifically, this tool helps you map walkability and bikeability averages as a 
 It relies on the following external services to work:
 
 - A PostgreSQL database within extensions `postgis` and `hstore` enabled
-- An Open Street Map database imported in to this database
-- A running instance a Vahalla (used for calculating network routing)
+- An Open Street Map database imported into this database
+- A running instance a [Vahalla](https://valhalla.readthedocs.io/en/latest/) (used for calculating network routing)
 - A GeoJSON file of the boundary you would like to gather data for (should fit inside OSM data)
 
 For a full description of how to use this tool, you are encouraged to visit 

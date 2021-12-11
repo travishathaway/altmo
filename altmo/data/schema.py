@@ -34,23 +34,6 @@ def create_schema(cursor):
         )
     '''
 
-    traffic_flow_sql = f'''
-        CREATE TABLE traffic_flow (
-            id SERIAL PRIMARY KEY,
-            flow_reading VARCHAR(100),
-            flow_data JSONB,
-            geom Geometry(Point, {SRS_ID})
-        )
-    '''
-
-    pop_density_sql = f'''
-        CREATE TABLE pop_density (
-            id SERIAL PRIMARY KEY,
-            num_people INTEGER,
-            geom Geometry(Point, {SRS_ID})
-        )
-    '''
-
     residences_sql = f'''
         CREATE TABLE residences (
             id SERIAL PRIMARY KEY,
@@ -124,8 +107,6 @@ def create_schema(cursor):
     cursor.execute(study_areas_sql)
     cursor.execute(study_areas_parts_sql)
     cursor.execute(amenities_sql)
-    cursor.execute(traffic_flow_sql)
-    cursor.execute(pop_density_sql)
     cursor.execute(residences_sql)
     cursor.execute(residence_amenity_distances_sql)
     cursor.execute(residence_amenity_distances_straight_sql)
@@ -142,6 +123,4 @@ def remove_schema(cursor):
     cursor.execute('DROP TABLE study_area_parts CASCADE')
     cursor.execute('DROP TABLE study_areas CASCADE')
     cursor.execute('DROP TABLE amenities CASCADE')
-    cursor.execute('DROP TABLE traffic_flow CASCADE')
-    cursor.execute('DROP TABLE pop_density CASCADE')
     cursor.execute('DROP TABLE residences CASCADE')

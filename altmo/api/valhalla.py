@@ -1,10 +1,5 @@
 from typing import Tuple, List
 
-import requests
-
-API_ENDPOINT = 'http://localhost:8002/route'
-MATRIX_ENDPOINT = 'http://localhost:8002/sources_to_targets'
-
 
 def get_matrix_request(poi: Tuple, batch: List[Tuple], costing: str = 'auto') -> dict:
     """

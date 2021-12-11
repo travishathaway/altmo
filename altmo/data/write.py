@@ -73,7 +73,7 @@ NATURE_AMENITIES = (
     'forest',
     'sports',
     'cemetery',
-    'allotment'  # Schrebergartens fall into this category
+    'allotment'
 )
 
 AMENITY_CATEGORY_MAP = {

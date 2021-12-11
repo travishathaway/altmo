@@ -117,7 +117,7 @@ Running the analysis
 
 With all of this in place, we are now ready to run the analysis itself.
 This consist of identifying the residences and amenities in OSM data,
-saving that in our tables, and the calculating the network distance
+saving that in our tables, and calculating the network distance
 between the two, so we can collect time estimates.
 
 Before doing this, we first need to designate a study area in our
@@ -129,7 +129,7 @@ Once you have this file, you can import it with the following command:
 
 .. code:: bash
 
-   altmo csa boundary.geojson "<study_area_name>" "<study_area_description>"
+   altmo csa boundary.geojson "<study_area_name>" "<study_area_description>" <srs_id:3857>
 
 Be sure to note the name you gave for the ``study_area_name`` parameter
 as we will be using this repeatedly for the other commands.

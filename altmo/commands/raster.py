@@ -37,8 +37,9 @@ AVAILABLE_FIELDS = (
 @click.option('-m', '--mode', default='pedestrian')
 @click.option('-f', '--field', default='all_average_time')
 @click.option('-r', '--resolution', default=100)
+@click.option('-s', '--srs-id', default=SRS_ID)
 @psycopg2_cur(PG_DSN)
-def raster(cursor, study_area, outfile, mode, field, resolution) -> None:
+def raster(cursor, study_area, outfile, mode, field, resolution, srs_id) -> None:
     """Generates raster data from database"""
     study_area_id, *_ = get_study_area(cursor, study_area)
     if not study_area_id:
@@ -50,7 +51,7 @@ def raster(cursor, study_area, outfile, mode, field, resolution) -> None:
         sys.exit(1)
 
     geojson = json.loads(
-        get_residence_points_time_zscore_geojson(cursor, study_area_id, mode)
+        get_residence_points_time_zscore_geojson(cursor, study_area_id, mode, srs_id=srs_id)
     )
 
     pts = [
@@ -69,7 +70,7 @@ def raster(cursor, study_area, outfile, mode, field, resolution) -> None:
               outputBounds=[ulx, uly, lrx, lry], width=xsize, height=ysize)
 
 
-def get_bounding_box(pts: List[Tuple]) -> List:
+def get_bounding_box(pts: List[Tuple]) -> List[List, List]:
     """
     Provided a geojson object return a flat list of points as list
     """

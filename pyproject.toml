@@ -1,9 +1,14 @@
 [tool.poetry]
 name = "altmo"
-version = "0.1.0"
+version = "0.1.1a1"
 description = "Tools for mapping walkability and bikeability using Open Street Map data"
 authors = ["Travis Hathaway <travis.j.hathaway@gmail.com>"]
 license = "GPLv3"
+readme = 'README.md'
+homepage = 'https://altmo.readthedocs.io'
+documentation = 'https://altmo.readthedocs.io'
+repository = 'https://github.com/travishathaway/altmo'
+keywords = ['OpenStreetMap', 'GIS']
 
 [tool.poetry.dependencies]
 python = "^3.9"
