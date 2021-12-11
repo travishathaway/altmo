@@ -18,6 +18,8 @@ GDAL = "3.2.1"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
 jupyterlab = "^3.2.2"
+Sphinx = "^4.3.1"
+recommonmark = "^0.7.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -15,14 +15,12 @@ def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List
         extra_join = '''
             JOIN residence_amenity_distance_standardized_categorized c
             ON r.id = c.residence_id
-            JOIN study_area_parts p
-            ON ST_Contains(p.geom, r.geom)
         '''
         extra_flds = '''
             , c.administrative_average_time, c.community_average_time, c.groceries_average_time,
             c.health_average_time, c.nature_average_time, c.outing_destination_average_time,
             c.school_average_time, c.shopping_average_time, c.all_average_time,
-            c.mode, p.name, p.description
+            c.mode
         '''
     else:
         extra_join = ''
@@ -34,10 +32,6 @@ def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List
         residences r
     {extra_join}
     WHERE
-        "house_number" IS NOT NULL
-    AND
-        building IN ('yes', 'house', 'residential', 'apartments')
-    AND
         r.study_area_id = %s
     '''
     cursor.execute(sql, (study_area_id,))
@@ -220,6 +214,47 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: s
             sc.school_average_time,
             sc.shopping_time_zscore,
             sc.shopping_average_time
+        FROM
+            residences r
+        JOIN
+            residence_amenity_distance_standardized_categorized sc
+        ON
+            r.id = sc.residence_id
+        WHERE
+            r.study_area_id = %s
+        AND
+            sc.mode = %s
+        ) row) features;
+    '''
+
+    cursor.execute(sql, (study_area_id, mode))
+
+    result = cursor.fetchone()
+
+    if result:
+        return json.dumps(result[0])
+    else:
+        return json.dumps({})
+
+
+def get_residence_points_all_web_geojson(cursor, study_area_id: int, mode: str) -> str:
+    sql = '''
+    SELECT jsonb_build_object(
+        'type',     'FeatureCollection',
+        'features', jsonb_agg(feature)
+    )
+    FROM (
+        SELECT
+            json_build_object(
+                'type',       'Feature',
+                'id',         id,
+                'geometry',   ST_AsGeoJSON(ST_Transform(geom, 4326))::jsonb,
+                'properties', to_jsonb(row) - 'geom'
+            ) AS feature
+        FROM (
+        SELECT
+            r.id, r.geom,
+            sc.all_average_time
         FROM
             residences r
         JOIN

@@ -8,6 +8,7 @@ from psycopg2.extras import register_hstore
 from altmo.data.read import (
     get_study_area,
     get_residence_points_time_zscore_geojson,
+    get_residence_points_all_web_geojson,
     get_residences
 )
 from altmo.data.decorators import psycopg2_cur
@@ -47,6 +48,8 @@ def export(cursor, study_area, export_type, mode, export_dir):
 
     if export_type == 'all':
         click.echo(get_residence_points_time_zscore_geojson(cursor, study_area_id, mode))
+    elif export_type == 'all_web':
+        click.echo(get_residence_points_all_web_geojson(cursor, study_area_id, mode))
     elif export_type == 'single_residences':
         if os.path.exists(export_dir):
             click.echo('directory already exists')
@@ -69,7 +72,6 @@ def export(cursor, study_area, export_type, mode, export_dir):
             rez_dict[rez_id]['id'] = rez_id
             rez_dict[rez_id]['properties']['tags'] = rez[2]
             rez_dict[rez_id]['properties']['house_number'] = rez[3]
-            rez_dict[rez_id]['properties']['study_area_part'] = rez[16]
 
         # second pass to actually write json files to disk
         for rez_id, data in rez_dict.items():
