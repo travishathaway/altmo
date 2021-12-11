@@ -1,17 +1,15 @@
 # AltMo
 
-**Alt**ernative **Mo**bility is a CLI tool which helps map alternative mobilities with Open Street Map data. 
+**Alt**ernative **Mo**bilities is a CLI tool which helps map alternative mobilities with Open Street Map data.
+Specifically, this tool helps you map walkability and bikeability averages as a surface for an area of intent
+(usually a city or a region).
 
-Requirements for this project are:
-- PostgreSQL with PostGIS
-- Open Street Map (OSM) data imported to PostgreSQL for the area you want to analyze
-- A running instance of Vahalla (route generation tool)
-- ~~A list of amenity inventory (more on this below)~~ (maybe later)
-- A geojson file of the boundary you would like to gather data for (should fit inside OSM data)
+It relies on the following external services to work:
 
-You will also need to set the environment variable `ALTMO_PG_DSN` and `ALTMO_VALHALLA_SERVER`. This is the PostgreSQL 
-connection string and the URL of the running instance of Valhalla. The database connector should be pointed at the
-database with the OSM data (make sure the user has `CREATE` and `DROP` privileges).
+- A PostgreSQL database within extensions `postgis` and `hstore` enabled
+- An Open Street Map database imported in to this database
+- A running instance a Vahalla (used for calculating network routing)
+- A GeoJSON file of the boundary you would like to gather data for (should fit inside OSM data)
 
-For more detailed instructions on how to use all the commands in this project, see 
-[AltMo Analysis Instructions](./docs/altmo-analysis-instructions.md).
+For a full description of how to use this tool, you are encouraged to visit 
+[https://altmo.readthedocs.io/en/latest/index.html](https://altmo.readthedocs.io/en/latest/index.html).
