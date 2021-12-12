@@ -16,8 +16,7 @@ from altmo.settings import PG_DSN
 @psycopg2_cur(PG_DSN)
 def straight_distance(cursor, study_area, category, name, show_status):
     """
-    Calculates the straight line distance from a residence to the nearest
-    amenity
+    Calculates the straight line distance from a residence to the nearest amenity
     """
     study_area_id, *_ = get_study_area(cursor, study_area)
     if not study_area_id:

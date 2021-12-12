@@ -2,9 +2,10 @@ import json
 import sys
 
 import click
-import psycopg2
+from psycopg2.errors import UniqueViolation
 
 from altmo.data.decorators import psycopg2_cur
+from altmo.data import write
 from altmo.settings import PG_DSN
 
 
@@ -19,21 +20,14 @@ def create_study_area(cursor, boundary, name, description, srs_id):
     (Create Study Area) import geojson boundary into our study_areas table
     """
     data = json.loads(boundary.read())
+    data['name'] = name
+    data['description'] = description
 
     try:
-        sql = f'''
-            INSERT INTO study_areas (name, description, geom)
-            VALUES (%s, %s, ST_SetSRID(ST_GeomFromGeoJSON(%s), {srs_id}))
-        '''
-        features = data['features']
-        feat = features[0]
-        geometry = feat['geometry']
+        write.create_study_area(cursor, data, srs_id)
     except (KeyError, IndexError):
         click.echo("Malformed GeoJSON")
         sys.exit(1)
-
-    try:
-        cursor.execute(sql, (name, description, json.dumps(geometry)))
-    except psycopg2.errors.UniqueViolation:
+    except UniqueViolation as exc:
         click.echo("Name already exists in database")
         sys.exit(1)

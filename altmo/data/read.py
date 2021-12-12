@@ -1,10 +1,21 @@
 import json
-from typing import List, Tuple
+from typing import List, Tuple, Dict
+
+from .schema import (
+    STUDY_AREA_TBL,
+    STUDY_PARTS_TBL,
+    RESIDENCES_TBL,
+    AMENITIES_TBL,
+    RES_AMENITY_DIST_TBL,
+    RES_AMENITY_DIST_STR_TBL,
+    RES_AMENITY_CAT_DIST_TBL,
+    RES_AMENITY_STD_CAT_TBL
+)
 
 
 def get_study_area(cursor, name) -> tuple:
     """returns a single study area"""
-    cursor.execute('SELECT id, name, description, geom FROM study_areas WHERE name = %s', (name,))
+    cursor.execute(f'SELECT id, name, description, geom FROM {STUDY_AREA_TBL} WHERE name = %s', (name,))
 
     return cursor.fetchone() or (None, None)
 
@@ -12,8 +23,8 @@ def get_study_area(cursor, name) -> tuple:
 def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List[Tuple]:
     """get all the residences for a study area"""
     if with_stats:
-        extra_join = '''
-            JOIN residence_amenity_distance_standardized_categorized c
+        extra_join = f'''
+            JOIN {RES_AMENITY_STD_CAT_TBL} c
             ON r.id = c.residence_id
         '''
         extra_flds = '''
@@ -29,7 +40,7 @@ def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List
     SELECT
         r.id, r.study_area_id, r.tags, r.house_number, r.building, r.geom {extra_flds}
     FROM
-        residences r
+        {RESIDENCES_TBL} r
     {extra_join}
     WHERE
         r.study_area_id = %s
@@ -41,7 +52,7 @@ def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List
 
 def get_amenity_name_category(cursor, study_area_id: int, category=None, name=None) -> List[str]:
     """return all amenity names in amenity table for a single study_area"""
-    sql = 'SELECT DISTINCT name, category FROM amenities WHERE study_area_id = %s'
+    sql = f'SELECT DISTINCT name, category FROM {AMENITIES_TBL} WHERE study_area_id = %s'
     params = (study_area_id,)
 
     if category:
@@ -57,17 +68,17 @@ def get_amenity_name_category(cursor, study_area_id: int, category=None, name=No
 
 
 def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) -> int:
-    sql = '''
+    sql = f'''
         SELECT 
             count(*) 
         FROM 
-            residence_amenity_distances_straight ra
+            {RES_AMENITY_DIST_STR_TBL} ra
         JOIN
-            residences r
+            {RESIDENCES_TBL} r
         ON
             ra.residence_id = r.id
         JOIN
-            amenities a
+            {AMENITIES_TBL} a
         ON
             ra.amenity_id = a.id
         WHERE a.study_area_id = %s AND r.study_area_id = %s
@@ -78,11 +89,12 @@ def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) ->
 
 def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
     """fetch all residences for a study area"""
-    sql = '''
+    sql = f'''
         SELECT 
             id, ST_X(ST_Transform(geom, 4326)), ST_Y(ST_Transform(geom, 4326))
         FROM 
-            residences WHERE study_area_id = %s
+            {RESIDENCES_TBL}
+        WHERE study_area_id = %s
     '''
     cursor.execute(sql, (study_area_id,))
     return cursor.fetchall()
@@ -90,13 +102,13 @@ def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
 
 def get_residence_amenity_straight_distance(
         cursor, residence_id: int, category: str = None, name: str = None) -> List[Tuple]:
-    sql = '''
+    sql = f'''
     SELECT 
         amenity_id, ST_X(ST_Transform(am.geom, 4326)), ST_Y(ST_Transform(am.geom, 4326))
     FROM 
-        residence_amenity_distances_straight
+        {RES_AMENITY_DIST_STR_TBL}
     JOIN
-        amenities am
+        {AMENITIES_TBL} am
     ON
         amenity_id = am.id
     WHERE
@@ -118,7 +130,7 @@ def get_residence_amenity_straight_distance(
 
 
 def get_study_area_parts_all_geojson(cursor, study_area_id: int) -> str:
-    sql = '''
+    sql = f'''
     SELECT jsonb_build_object(
         'type',     'FeatureCollection',
         'features', jsonb_agg(feature)
@@ -153,13 +165,13 @@ def get_study_area_parts_all_geojson(cursor, study_area_id: int) -> str:
             AVG(sc.shopping_time_zscore) as shopping_time_zscore,
             AVG(sc.shopping_distance_zscore) as shopping_distance_zscore
         FROM
-            study_area_parts st
+            {STUDY_PARTS_TBL} st
         JOIN
-            residences r
+            {RESIDENCES_TBL} r
         ON
             ST_Contains(st.geom, r.geom)
         JOIN
-            residence_amenity_distance_standardized_categorized sc
+            {RES_AMENITY_STD_CAT_TBL} sc
         ON
             r.id = sc.residence_id
         WHERE
@@ -215,9 +227,9 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: s
             sc.shopping_time_zscore,
             sc.shopping_average_time
         FROM
-            residences r
+            {RESIDENCES_TBL} r
         JOIN
-            residence_amenity_distance_standardized_categorized sc
+            {RES_AMENITY_STD_CAT_TBL} sc
         ON
             r.id = sc.residence_id
         WHERE
@@ -238,7 +250,7 @@ def get_residence_points_time_zscore_geojson(cursor, study_area_id: int, mode: s
 
 
 def get_residence_points_all_web_geojson(cursor, study_area_id: int, mode: str) -> str:
-    sql = '''
+    sql = f'''
     SELECT jsonb_build_object(
         'type',     'FeatureCollection',
         'features', jsonb_agg(feature)
@@ -256,9 +268,9 @@ def get_residence_points_all_web_geojson(cursor, study_area_id: int, mode: str) 
             r.id, r.geom,
             sc.all_average_time
         FROM
-            residences r
+            {RESIDENCES_TBL} r
         JOIN
-            residence_amenity_distance_standardized_categorized sc
+            {RES_AMENITY_STD_CAT_TBL} sc
         ON
             r.id = sc.residence_id
         WHERE
@@ -302,9 +314,9 @@ def get_residence_points_time_geojson(cursor, study_area_id: int, category: str 
             FLOOR(AVG(s.average_time) / 60.0) as minutes,
             AVG(s.average_time)::integer %% 60 as seconds
         FROM
-            residence_amenity_distance_standardized s
+            {RES_AMENITY_CAT_DIST_TBL} s
         JOIN
-            residences r
+            {RESIDENCES_TBL} r
         ON
             r.id = s.residence_id
         WHERE
@@ -325,3 +337,83 @@ def get_residence_points_time_geojson(cursor, study_area_id: int, category: str 
         return json.dumps(result[0])
     else:
         return json.dumps({})
+
+
+def get_residence_composite_average_times(cursor, study_area_id: int, mode: str, weights: Dict[str, Dict]) -> List:
+    """retrieves a list of residences with their composite averages based on amenities config"""
+    amenities = get_amenity_name_category(cursor, study_area_id)
+    amenity_categories = sorted([f'{category}_{amenity}' for amenity, category in amenities])
+
+    avg_alias = 'avg_time'
+    sub_sql = f'''
+    SELECT
+        ra.residence_id as id, a.category || ''_'' || a.name as category, avg(ra.time) as {avg_alias}
+    FROM
+        {RES_AMENITY_DIST_TBL} ra
+    LEFT JOIN
+        {AMENITIES_TBL} a
+    ON
+        a.id = ra.amenity_id
+    WHERE
+        ra.mode = ''{mode}''
+    AND
+        a.study_area_id = {study_area_id}
+    GROUP BY
+        ra.residence_id, a.category, a.name, ra.mode
+    ORDER BY
+        ra.residence_id
+    '''
+
+    distinct_sql = f'''
+    SELECT
+        DISTINCT a.category || ''_'' || a.name AS category
+    FROM
+        {RES_AMENITY_DIST_TBL} ra
+    LEFT JOIN
+        {AMENITIES_TBL} a
+    ON 
+        a.id = ra.amenity_id
+    ORDER BY 
+        a.category || ''_'' || a.name
+    '''
+
+    pivot_columns_with_type = [f'{col} NUMERIC' for col in amenity_categories]
+    pivot_columns_str = ', '.join(pivot_columns_with_type)
+
+    comp_avg_stmts = []
+    for category, amts in weights.items():
+            wght_stmts = []
+            for amenity, wght in amts.items():
+                if (amenity, category) in [(a, c) for a, c in amenities]:
+                    wght_stmts.append(f'{category}_{amenity} * {wght["weight"]}')
+            wght_str = '+ '.join(wght_stmts)
+            comp_avg_stmts.append(f'({wght_str}) as {category}')
+
+    all_avg_str = ''
+    categories = {c for _, c in amenities}
+
+    if len(amenities) > 0:
+        factor = 1.0 / len(categories)
+        all_avg_str = '+ '.join([f'{c} * {factor}' for c in categories])
+        all_avg_str = f' ({all_avg_str}) as all'
+
+    comp_avg_str = ','.join(comp_avg_stmts)
+    categories_str = ', '.join(categories)
+
+    sql = f'''
+    SELECT 
+        residence_id, {all_avg_str}, {categories_str}
+    FROM (
+        SELECT
+            residence_id, {comp_avg_str}
+        FROM 
+            crosstab('{sub_sql}', '{distinct_sql}')
+        AS (
+            residence_id INTEGER, {pivot_columns_str}
+        )
+    ) as sub
+    '''
+
+    cursor.execute(sql)
+
+    return cursor.fetchall()

@@ -70,7 +70,7 @@ def raster(cursor, study_area, outfile, mode, field, resolution, srs_id) -> None
               outputBounds=[ulx, uly, lrx, lry], width=xsize, height=ysize)
 
 
-def get_bounding_box(pts: List[Tuple]) -> List[List, List]:
+def get_bounding_box(pts: List[Tuple]) -> List:
     """
     Provided a geojson object return a flat list of points as list
     """

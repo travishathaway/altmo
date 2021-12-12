@@ -1,165 +1,122 @@
-from typing import List, Tuple
+import json
+from typing import List, Tuple, Union, Dict
 
 from tqdm import tqdm
 from psycopg2.extras import execute_values
 
 from .read import get_amenity_name_category
-
-AMENITY_CATEGORIES = {
-    'school': (
-        'school',
-        'kindergarten',
-        'childcare',
-        'university',
-        'music_school',
-        'driving_school',
-        'college',
-        'research_institute'
-    ),
-    'shopping': (
-        'marketplace',
-        'hairdresser',
-        'clothes',
-        'books',
-        'florist',
-        'optician',
-        'furniture',
-        'sports',
-        'second_hand',
-    ),
-    'groceries': (
-        'supermarket',
-        'bakery',
-        'butcher'
-    ),
-    'administrative': (
-        'townhall',
-        'police',
-        'bank',
-        'post_office',
-        'post_box'
-    ),
-    'health': (
-        'doctors',
-        'hospital',
-        'nursing_home',
-        'veterinary',
-        'pharmacy',
-        'dentist',
-        'clinic'
-    ),
-    'community': (
-        'community_centre',
-        'social_facility',
-        'library',
-        'place_of_worship'
-    ),
-    'outing_destination': (
-        'pub',
-        'cafe',
-        'theatre',
-        'nightclub',
-        'bar',
-        'ice_cream',
-        'events_venue',
-        'cinema',
-        'restaurant',
-        'fast_food'
-    ),
-}
-
-NATURE_AMENITIES = (
-    'park',
-    'forest',
-    'sports',
-    'cemetery',
-    'allotment'
+from .schema import (
+    STUDY_AREA_TBL, AMENITIES_TBL, RESIDENCES_TBL,
+    RES_AMENITY_STD_CAT_TBL, RES_AMENITY_DIST_TBL, RES_AMENITY_DIST_STR_TBL,
+    RES_AMENITY_CAT_DIST_TBL
 )
 
-AMENITY_CATEGORY_MAP = {
-    amenity: category
-    for category, amenities in AMENITY_CATEGORIES.items()
-    for amenity in amenities
-}
+
+def create_study_area(cursor, data: dict, srs_id: Union[int, str]) -> None:
+    """
+    Creates a new study area.
+
+    :raises: IndexError, KeyError, psycopg2.errors.UniqueViolation
+    """
+    sql = f'''
+        INSERT INTO {STUDY_AREA_TBL} (name, description, geom)
+        VALUES (%s, %s, ST_SetSRID(ST_GeomFromGeoJSON(%s), {srs_id}))
+    '''
+    name = data['name']
+    description = data['description']
+    [feature] = data['features']
+    geometry = feature['geometry']
+
+    cursor.execute(sql, (name, description, json.dumps(geometry)))
 
 
 def delete_amenities(cursor, study_area_id: int) -> None:
     """removes all amenities for a study area"""
-    sql = 'DELETE FROM amenities WHERE study_area_id = %s'
+    sql = f'DELETE FROM {AMENITIES_TBL} WHERE study_area_id = %s'
     cursor.execute(sql, (study_area_id, ))
 
 
-def add_amenities(cursor, study_area_id: int) -> None:
+def add_amenities(cursor, study_area_id: int, amenities: List[str]) -> None:
     """adds amenities to the amenities table without category"""
-    amenities = "','".join(AMENITY_CATEGORY_MAP.keys())
+    amenities_sql_str = "','".join(amenities)
 
     # Add points from amenities column
     sql = f'''
-    INSERT INTO amenities (name, geom, study_area_id)
+    INSERT INTO {AMENITIES_TBL} (name, geom, study_area_id)
     SELECT 
         amenity, way, {study_area_id}
     FROM 
         planet_osm_point pp
     WHERE 
-        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT geom FROM {STUDY_AREA_TBL} where id = %s), pp.way)
     AND
-        amenity IN ('{amenities}')
+        amenity IN ('{amenities_sql_str}')
     '''
     cursor.execute(sql, (study_area_id, ))
 
     # Add polygons from amenities column
     sql = f'''
-    INSERT INTO amenities (name, geom, study_area_id)
+    INSERT INTO {AMENITIES_TBL} (name, geom, study_area_id)
     SELECT 
         amenity, ST_Centroid(way), {study_area_id}
     FROM 
         planet_osm_polygon pp
     WHERE 
-        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT geom FROM {STUDY_AREA_TBL} WHERE id = %s), pp.way)
     AND
-        amenity IN ('{amenities}')
+        amenity IN ('{amenities_sql_str}')
     '''
     cursor.execute(sql, (study_area_id, ))
 
     # Add points from shop column
     sql = f'''
-    INSERT INTO amenities (name, geom, study_area_id)
+    INSERT INTO {AMENITIES_TBL} (name, geom, study_area_id)
     SELECT 
         shop, way, {study_area_id}
     FROM 
         planet_osm_point pp
     WHERE 
-        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT geom FROM {STUDY_AREA_TBL} WHERE id = %s), pp.way)
     AND
-        shop IN ('{amenities}')
+        shop IN ('{amenities_sql_str}')
     '''
     cursor.execute(sql, (study_area_id, ))
 
     # Add polygons from shop column
     sql = f'''
-    INSERT INTO amenities (name, geom, study_area_id)
+    INSERT INTO {AMENITIES_TBL} (name, geom, study_area_id)
     SELECT 
         shop, ST_Centroid(way), {study_area_id}
     FROM 
         planet_osm_polygon pp
     WHERE 
-        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT geom FROM {STUDY_AREA_TBL} WHERE id = %s), pp.way)
     AND
-        shop IN ('{amenities}')
+        shop IN ('{amenities_sql_str}')
     '''
     cursor.execute(sql, (study_area_id, ))
 
 
 def add_natural_amenities(cursor, study_area_id: int) -> None:
-    """runs special queries that add natural amenities for a study area"""
-    sql = '''
+    """
+    Runs special queries that add natural amenities for a study area.
+
+    TODO: Refactor
+
+    This function runs a complicated and very locale specific query
+    for determining natural areas in a study area. This needs to be broken
+    up a little (function for adding parks, playgrounds, etc.)
+
+    Another problem here is that we assume an SRS that uses meters.
+    """
+    sql = f'''
     SELECT
         (ST_Dump(ST_GeneratePoints(pp.way, (ceil(pp.way_area/50000.0))::integer))).geom, 
         landuse, leisure, "natural"
     FROM
         planet_osm_polygon pp
     WHERE
-        ST_Contains((SELECT geom from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT geom FROM {STUDY_AREA_TBL} WHERE id = %s), pp.way)
     AND
         ("access" is null OR "access" = 'yes')
     AND (
@@ -195,23 +152,23 @@ def add_natural_amenities(cursor, study_area_id: int) -> None:
         elif leisure == 'park' or leisure == 'playground':
             records.append((geom, 'nature', 'park', study_area_id))
 
-    insert_sql = '''
-        INSERT INTO amenities (geom, category, name, study_area_id) VALUES %s
+    insert_sql = f'''
+        INSERT INTO {AMENITIES_TBL} (geom, category, name, study_area_id) VALUES %s
     '''
     execute_values(
         cursor, insert_sql, records, template=None, page_size=100
     )
 
 
-def add_amenities_category(cursor, study_area_id: int) -> None:
-    values = AMENITY_CATEGORY_MAP.items()
+def add_amenities_category(cursor, study_area_id: int, amenity_category_map: Dict[str, str]) -> None:
+    values = amenity_category_map.items()
     values_str = ','.join([
         f"('{name}', '{category}')"
         for name, category in values
     ])
 
     sql = f'''
-    UPDATE amenities as a set
+    UPDATE {AMENITIES_TBL} as a set
         category = c.category
     FROM (VALUES
         {values_str}
@@ -235,9 +192,9 @@ def add_residences(cursor, study_area_id: int) -> None:
       WHERE 
         landuse = 'residential'
       AND
-        ST_Contains((SELECT ST_Buffer(geom, 100) from study_areas where id = %s), pp.way)
+        ST_Contains((SELECT ST_Buffer(geom, 100) FROM {STUDY_AREA_TBL} WHERE id = %s), pp.way)
     )
-    INSERT INTO residences (study_area_id, building, house_number, tags, geom)
+    INSERT INTO {RESIDENCES_TBL} (study_area_id, building, house_number, tags, geom)
     SELECT 
       {study_area_id}, p.building, p."addr:housenumber", p.tags, 
       ST_Centroid(p.way)
@@ -254,43 +211,22 @@ def add_residences(cursor, study_area_id: int) -> None:
 
 def delete_residences(cursor, study_area_id: int) -> None:
     """removes all residences for a study area"""
-    sql = 'DELETE FROM residences WHERE study_area_id = %s'
+    sql = f'DELETE FROM {RESIDENCES_TBL} WHERE study_area_id = %s'
     cursor.execute(sql, (study_area_id, ))
 
 
-def _get_amenity_residence_distance_straight_sql() -> str:
-    """get the SQL statement for the straight distance calculation"""
-    return f'''
-    INSERT INTO residence_amenity_distances_straight (residence_id, amenity_id)
-    SELECT 
-    re.id, (
-        SELECT am.id
-        FROM amenities am
-        WHERE am.name = %s AND category = %s
-        ORDER BY ST_Distance(re.geom, am.geom)
-        LIMIT 1
-    )
-    FROM 
-        residences re
-    WHERE
-        building IN ('yes', 'house', 'residential', 'apartments', 'terrace', 'detached')
-    AND
-        study_area_id = %s;
-    '''
-
-
 def _get_amenity_residence_distance_straight_top_three_sql() -> str:
-    return '''
-    INSERT INTO residence_amenity_distances_straight (residence_id, amenity_id)
-    SELECT rank_filter.residence_id, rank_filter.amenity_id FROM (
+    return f'''
+    INSERT INTO {RES_AMENITY_DIST_STR_TBL} (residence_id, amenity_id, distance)
+    SELECT rank_filter.residence_id, rank_filter.amenity_id, rank_filter.distance FROM (
         SELECT 
-            re.id as residence_id, am.id as amenity_id, ST_Distance(am.geom, re.geom),
+            re.id as residence_id, am.id as amenity_id, ST_Distance(am.geom, re.geom) as distance,
             rank() OVER (
                 PARTITION BY re.id
                 ORDER BY ST_Distance(am.geom, re.geom)
             )
         FROM
-            residences re, amenities am
+            {RESIDENCES_TBL} re, {AMENITIES_TBL} am
         WHERE
             am.name = %s AND am.category = %s
         AND
@@ -325,9 +261,9 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
     tuple needs to be in the following order:
         distance, time, amenity_id, residence_id, mode
     """
-    sql = '''
+    sql = f'''
         INSERT INTO 
-            residence_amenity_distances (distance, time, amenity_id, residence_id, mode)
+            {RES_AMENITY_DIST_TBL} (distance, time, amenity_id, residence_id, mode)
         VALUES %s
     '''
     try:
@@ -338,12 +274,12 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
         raise exc
 
 
-def add_standardized_network_distances(cursor, study_area_id: int, mode: str) -> None:
+def add_residence_amenity_category_distances(cursor, study_area_id: int, mode: str) -> None:
     """
     Inserts new records in the table holding the standardized scores for distance and time
     """
-    sql = '''
-    INSERT INTO  residence_amenity_distance_standardized 
+    sql = f'''
+    INSERT INTO {RES_AMENITY_CAT_DIST_TBL}
         (residence_id, amenity_category, amenity_name, mode,
         average_distance, average_time, time_zscore, distance_zscore)
     SELECT 
@@ -372,13 +308,13 @@ def add_standardized_network_distances(cursor, study_area_id: int, mode: str) ->
                     MIN(d.time)
             END avg_time
         FROM
-            residence_amenity_distances d
+            {RES_AMENITY_DIST_TBL} d
         JOIN
-            residences r
+            {RESIDENCES_TBL} r
         ON
             d.residence_id = r.id
         JOIN
-            amenities am
+            {AMENITIES_TBL} am
         ON
             d.amenity_id = am.id
         WHERE
@@ -394,8 +330,8 @@ def add_standardized_network_distances(cursor, study_area_id: int, mode: str) ->
 
 
 def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
-    sql = '''
-    INSERT INTO residence_amenity_distance_standardized_categorized (
+    sql = f'''
+    INSERT INTO {RES_AMENITY_STD_CAT_TBL} (
         residence_id,
         administrative_time_zscore, community_time_zscore, groceries_time_zscore,
         health_time_zscore, nature_time_zscore, outing_destination_time_zscore, school_time_zscore,
@@ -479,7 +415,8 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
                 WHEN d.amenity_category = 'school'
                 THEN
                     CASE
-                        WHEN d.amenity_name = 'driving_school' OR d.amenity_name = 'music_school' 
+                        WHEN d.amenity_name = 'driving_school' OR d.amenity_name = 'music_school'
+                            OR d.amenity_name = 'research_institute'
                         THEN d.time_zscore * 0.075
                         WHEN d.amenity_name = 'college'
                         THEN d.time_zscore * 0.125
@@ -603,9 +540,9 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
         ) as shopping_average_time,
         %s as mode
     FROM
-        residence_amenity_distance_standardized d
+        {RES_AMENITY_CAT_DIST_TBL} d
     JOIN
-        residences r
+        {RESIDENCES_TBL} r
     ON
         r.id = d.residence_id
     WHERE
@@ -621,9 +558,9 @@ def add_category_time_zscores(cursor, study_area_id: int, mode: str) -> None:
 
 def add_category_time_zscores_all(cursor, study_area_id: int, mode: str) -> None:
     """updates the `all_*` columns in the `"residence_amenity_distance_standardized_categorized`"""
-    sql = '''
+    sql = f'''
     UPDATE
-        residence_amenity_distance_standardized_categorized s
+        {RES_AMENITY_STD_CAT_TBL} s
     SET
         all_time_zscore = (
             administrative_time_zscore * 0.125 +
@@ -646,7 +583,7 @@ def add_category_time_zscores_all(cursor, study_area_id: int, mode: str) -> None
             shopping_average_time * 0.125
         )
     FROM
-        residences AS r
+        {RESIDENCES_TBL} AS r
     WHERE
         s.residence_id = r.id
     AND
