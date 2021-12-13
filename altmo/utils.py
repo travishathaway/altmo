@@ -34,15 +34,14 @@ def get_amenity_category_map(config_data: Dict[str, Dict]) -> Dict:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
 
-def get_amenity_pivot_columns(config_data: Dict[str, Dict]) -> List[str]:
+def get_category_amenity_keys(categories: Dict[str, Dict]) -> List[str]:
     """
-    Returns amenity category and amenity name combined together which can be used in a pivot table query
+    Returns category and amenity combined together as a single str `{category}_{amenity}`
     """
     try:
-        amenity_categories = config_data['amenities']['categories']
         return [
             f'{category}_{amenity}'
-            for category, amenities in amenity_categories.items()
+            for category, amenities in categories.items()
             for amenity in amenities.keys()
         ]
     except KeyError:

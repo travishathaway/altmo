@@ -1,6 +1,8 @@
 import json
 from typing import List, Tuple, Dict
 
+from altmo.utils import get_category_amenity_keys
+
 from .schema import (
     STUDY_AREA_TBL,
     STUDY_PARTS_TBL,
@@ -50,7 +52,7 @@ def get_residences(cursor, study_area_id: int, with_stats: bool = False) -> List
     return cursor.fetchall()
 
 
-def get_amenity_name_category(cursor, study_area_id: int, category=None, name=None) -> List[str]:
+def get_amenity_name_category(cursor, study_area_id: int, category=None, name=None) -> List[tuple]:
     """return all amenity names in amenity table for a single study_area"""
     sql = f'SELECT DISTINCT name, category FROM {AMENITIES_TBL} WHERE study_area_id = %s'
     params = (study_area_id,)
@@ -340,14 +342,38 @@ def get_residence_points_time_geojson(cursor, study_area_id: int, category: str 
 
 
 def get_residence_composite_average_times(cursor, study_area_id: int, mode: str, weights: Dict[str, Dict]) -> List:
-    """retrieves a list of residences with their composite averages based on amenities config"""
-    amenities = get_amenity_name_category(cursor, study_area_id)
-    amenity_categories = sorted([f'{category}_{amenity}' for amenity, category in amenities])
+    """
+    Retrieves a list of residences with their composite averages based on amenities config.
 
-    avg_alias = 'avg_time'
+    This function:
+        - builds a rather complex SQL query (using the `crosstab` function)
+        - executes this query
+        - returns the results
+
+    Admittedly it is a bit messy. One thing to watch out for is the `sub_sql` string
+    which has to be escaped because it is being passed to the `crosstab` function.
+
+    SQL INJECTION VULNERABLE!!! (Never use this function with untrusted inputs!!!)
+
+    :param cursor: psycopg2.cursor used for executing queries
+    :param study_area_id: Used to narrow our query to study area we are interested in
+    :param mode: Used to limit the results to a mode a transport ('pedestrian' or 'bicycle')
+    :param weights: Mapping used to pass in weighting information (important for the composite index), but
+                    also lets the function know which category amenity pairs to retrieve
+    """
+    amenities = get_amenity_name_category(cursor, study_area_id)
+    config_cat_amts = get_category_amenity_keys(weights)
+
+    # if it is not in our database or the config file, we do not use it
+    amenity_categories = sorted([
+        f'{category}_{amenity}' for amenity, category in amenities
+        if f'{category}_{amenity}' in config_cat_amts
+    ])
+    cat_amt_filter_str = "'', ''".join(amenity_categories)
+
     sub_sql = f'''
     SELECT
-        ra.residence_id as id, a.category || ''_'' || a.name as category, avg(ra.time) as {avg_alias}
+        ra.residence_id as id, a.category || ''_'' || a.name as category, avg(ra.time) as avg_time
     FROM
         {RES_AMENITY_DIST_TBL} ra
     LEFT JOIN
@@ -358,6 +384,8 @@ def get_residence_composite_average_times(cursor, study_area_id: int, mode: str,
         ra.mode = ''{mode}''
     AND
         a.study_area_id = {study_area_id}
+    AND
+        a.category || ''_'' || a.name IN (''{cat_amt_filter_str}'')
     GROUP BY
         ra.residence_id, a.category, a.name, ra.mode
     ORDER BY
@@ -373,39 +401,45 @@ def get_residence_composite_average_times(cursor, study_area_id: int, mode: str,
         {AMENITIES_TBL} a
     ON 
         a.id = ra.amenity_id
+    WHERE
+        a.category || ''_'' || a.name IN (''{cat_amt_filter_str}'')
     ORDER BY 
         a.category || ''_'' || a.name
     '''
 
+    # Define the columns we extract from the `crosstab` function
     pivot_columns_with_type = [f'{col} NUMERIC' for col in amenity_categories]
     pivot_columns_str = ', '.join(pivot_columns_with_type)
 
-    comp_avg_stmts = []
-    for category, amts in weights.items():
+    def get_category_avg_stmts_str() -> str:
+        cat_avg_stmts: List[str] = []
+
+        for category, amts in weights.items():
             wght_stmts = []
             for amenity, wght in amts.items():
                 if (amenity, category) in [(a, c) for a, c in amenities]:
                     wght_stmts.append(f'{category}_{amenity} * {wght["weight"]}')
             wght_str = '+ '.join(wght_stmts)
-            comp_avg_stmts.append(f'({wght_str}) as {category}')
+            cat_avg_stmts.append(f'({wght_str}) as {category}')
+
+        return ','.join(cat_avg_stmts)
+
+    # Used for the top level select in our query
+    categories = {c for _, c in amenities if c in weights}
+    categories_str = ', '.join(categories)
 
     all_avg_str = ''
-    categories = {c for _, c in amenities}
-
     if len(amenities) > 0:
         factor = 1.0 / len(categories)
         all_avg_str = '+ '.join([f'{c} * {factor}' for c in categories])
         all_avg_str = f' ({all_avg_str}) as all'
-
-    comp_avg_str = ','.join(comp_avg_stmts)
-    categories_str = ', '.join(categories)
 
     sql = f'''
     SELECT 
         residence_id, {all_avg_str}, {categories_str}
     FROM (
         SELECT
-            residence_id, {comp_avg_str}
+            residence_id, {get_category_avg_stmts_str()}
         FROM 
             crosstab('{sub_sql}', '{distinct_sql}')
         AS (
