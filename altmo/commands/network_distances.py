@@ -6,7 +6,6 @@ from itertools import zip_longest
 
 import click
 import requests
-import psycopg2
 
 from altmo.data.decorators import psycopg_context, psycopg2_cur
 from altmo.data.read import (
@@ -25,7 +24,7 @@ MODE_BICYCLE = 'bicycle'
 @click.command('network')
 @click.argument('study_area', type=str)
 @click.option('-p', '--processes', type=int)
-@click.option('-m', '--mode', type=str, default='pedestrian')
+@click.option('-m', '--mode', type=str, default=MODE_PEDESTRIAN)
 @click.option('-c', '--category', type=str)
 @click.option('-n', '--name', type=str)
 @psycopg2_cur(PG_DSN)
@@ -38,6 +37,7 @@ def network_distances(cursor, study_area, processes, mode, category, name):
     residences = get_study_area_residences(cursor, study_area_id)
 
     # Organizes residence ids in to batches which the various processes will process
+    # Size of batches = <number_of_residences> / <number_of_processes>
     batches = zip_longest(*(iter(residences),) * (len(residences) // processes))
     argument_batches = [(batch, category, name) for batch in batches]
 

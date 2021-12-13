@@ -2,10 +2,11 @@ import json
 import sys
 
 import click
-import psycopg2
+from psycopg2.errors import UniqueViolation
 
 from altmo.data.decorators import psycopg2_cur
 from altmo.data.read import get_study_area
+from altmo.data.schema import STUDY_PARTS_TBL
 from altmo.settings import PG_DSN
 
 
@@ -41,12 +42,12 @@ def create_study_area_parts(cursor, study_area, boundary):
         sys.exit(1)
 
     try:
-        sql = '''
-            INSERT INTO study_area_parts (name, description, geom, study_area_id)
+        sql = f'''
+            INSERT INTO {STUDY_PARTS_TBL} (name, description, geom, study_area_id)
             VALUES (%s, %s, ST_SetSRID(ST_GeomFromGeoJSON(%s), %s), %s)
         '''
         for part in study_area_parts:
             cursor.execute(sql, part)
-    except psycopg2.errors.UniqueViolation:
+    except UniqueViolation:
         click.echo("Name already exists in database")
         sys.exit(1)

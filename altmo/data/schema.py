@@ -10,7 +10,6 @@ RESIDENCES_TBL = f'{TBL_PREFIX}residences'
 RES_AMENITY_DIST_TBL = f'{TBL_PREFIX}residence_amenity_distances'
 RES_AMENITY_DIST_STR_TBL = f'{TBL_PREFIX}residence_amenity_distances_straight'
 RES_AMENITY_CAT_DIST_TBL = f'{TBL_PREFIX}residence_amenity_category_distances'
-RES_AMENITY_STD_CAT_TBL = f'{TBL_PREFIX}residence_amenity_distance_standardized_categorized'
 
 
 @psycopg2_cur(PG_DSN)
@@ -89,32 +88,6 @@ def create_schema(cursor):
         )
     '''
 
-    residence_amenity_standardized_categorized_sql = f'''
-        CREATE TABLE {RES_AMENITY_STD_CAT_TBL} (
-            residence_id INTEGER REFERENCES {RESIDENCES_TBL}(id),
-            administrative_time_zscore FLOAT,
-            community_time_zscore FLOAT,
-            groceries_time_zscore FLOAT,
-            health_time_zscore FLOAT,
-            nature_time_zscore FLOAT,
-            outing_destination_time_zscore FLOAT,
-            school_time_zscore FLOAT,
-            shopping_time_zscore FLOAT,
-            all_time_zscore FLOAT,
-            administrative_average_time FLOAT,
-            community_average_time FLOAT,
-            groceries_average_time FLOAT,
-            health_average_time FLOAT,
-            nature_average_time FLOAT,
-            outing_destination_average_time FLOAT,
-            school_average_time FLOAT,
-            shopping_average_time FLOAT,
-            all_average_time FLOAT,
-            mode VARCHAR(10),
-            PRIMARY KEY (residence_id, mode)
-        )
-    '''
-
     cursor.execute(study_areas_sql)
     cursor.execute(study_areas_parts_sql)
     cursor.execute(amenities_sql)
@@ -122,13 +95,11 @@ def create_schema(cursor):
     cursor.execute(residence_amenity_distances_sql)
     cursor.execute(residence_amenity_distances_straight_sql)
     cursor.execute(residence_amenity_standardized_sql)
-    cursor.execute(residence_amenity_standardized_categorized_sql)
 
 
 @psycopg2_cur(PG_DSN)
 def remove_schema(cursor):
     cursor.execute(f'DROP TABLE {RES_AMENITY_CAT_DIST_TBL} CASCADE')
-    cursor.execute(f'DROP TABLE {RES_AMENITY_STD_CAT_TBL} CASCADE')
     cursor.execute(f'DROP TABLE {RES_AMENITY_DIST_TBL} CASCADE')
     cursor.execute(f'DROP TABLE {RES_AMENITY_DIST_STR_TBL} CASCADE')
     cursor.execute(f'DROP TABLE {STUDY_PARTS_TBL} CASCADE')
