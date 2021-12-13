@@ -22,18 +22,6 @@ AVAILABLE_FIELDS = (
     'all',
 ) + get_available_amenity_categories(CONFIG_DATA)
 
-SINGLE_RESIDENCE_DATA_FIELDS = (
-    'administrative_average_time',
-    'community_average_time',
-    'groceries_average_time',
-    'health_average_time',
-    'nature_average_time',
-    'outing_destination_average_time',
-    'school_average_time',
-    'shopping_average_time',
-    'all_average_time',
-)
-
 
 def get_export_geojson(cursor, study_area_id: int, mode: str, srs_id: str, properties: Union[tuple, None]) -> dict:
     """Get the export geojson data as dict"""

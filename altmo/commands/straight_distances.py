@@ -1,8 +1,9 @@
 import sys
 
 import click
+from tqdm import tqdm
 
-from altmo.data.read import get_study_area
+from altmo.data.read import get_study_area, get_amenity_name_category
 from altmo.data.write import add_amenity_residence_distances_straight
 from altmo.data.decorators import psycopg2_cur
 from altmo.settings import PG_DSN
@@ -24,7 +25,12 @@ def straight_distance(cursor, study_area, category, name, show_status):
         sys.exit(1)
 
     # Add residence amenity distance
-    add_amenity_residence_distances_straight(
-        cursor, study_area_id,
-        category=category, name=name, show_status=show_status
-    )
+    amenities = get_amenity_name_category(cursor, study_area_id, category=category, name=name)
+    records = add_amenity_residence_distances_straight(cursor, study_area_id, amenities)
+
+    if show_status:
+        total = len(amenities)
+        records = tqdm(records, unit='amenity', total=total)
+
+    # Runs the code inside of the generator we received
+    list(records)

@@ -20,7 +20,7 @@ def get_study_area(cursor, name) -> tuple:
 
 
 def get_amenity_name_category(cursor, study_area_id: int, category=None, name=None) -> List[tuple]:
-    """return all amenity names in amenity table for a single study_area"""
+    """return all the amenity category, amenity name pairs for a single study_area"""
     sql = f'SELECT DISTINCT name, category FROM {AMENITIES_TBL} WHERE study_area_id = %s'
     params = (study_area_id,)
 

@@ -1,7 +1,6 @@
 import json
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Generator
 
-from tqdm import tqdm
 from psycopg2.extras import execute_values
 
 from .read import get_amenity_name_category
@@ -237,21 +236,14 @@ def _get_amenity_residence_distance_straight_top_three_sql() -> str:
     '''
 
 
-def add_amenity_residence_distances_straight(
-        cursor, study_area_id: int, category: str = None, name: str = None,
-        show_status: bool = False) -> None:
+def add_amenity_residence_distances_straight(cursor, study_area_id: int, amenities: list) -> Generator:
     """
     Finds the straight line distance amenity and residences.
-    We only do this for the first amenity that we find.
+    We only do this for the first three amenities that we find.
     """
-    amenities = get_amenity_name_category(cursor, study_area_id, category=category, name=name)
-
-    if show_status:
-        amenities = tqdm(amenities, unit='amenity')
-
     for amenity, category in amenities:
         sql = _get_amenity_residence_distance_straight_top_three_sql()
-        cursor.execute(sql, (amenity, category, study_area_id, study_area_id))
+        yield cursor.execute(sql, (amenity, category, study_area_id, study_area_id))
 
 
 def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
