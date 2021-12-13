@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "altmo"
-version = "0.1.1a1"
+version = "0.1.1a2"
 description = "Tools for mapping walkability and bikeability using Open Street Map data"
 authors = ["Travis Hathaway <travis.j.hathaway@gmail.com>"]
 license = "GPLv3"
