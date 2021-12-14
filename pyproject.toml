@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "altmo"
-version = "0.1.1a3"
+version = "0.1.1a7"
 description = "Tools for mapping walkability and bikeability using Open Street Map data"
 authors = ["Travis Hathaway <travis.j.hathaway@gmail.com>"]
 license = "GPLv3"
@@ -16,10 +16,13 @@ requests = "^2.25.1"
 psycopg2 = "^2.8.6"
 click = "^8.0.1"
 tqdm = "^4.61.0"
-numpy = "^1.21.0"
-rasterio = "^1.2.6"
-GDAL = "^3.2.1"
 PyYAML = "^6.0"
+
+# Extras
+pygdal = { version = "3.2.1.10", optional = true }
+
+[tool.poetry.extras]
+raster = ["pygdal"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

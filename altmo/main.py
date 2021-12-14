@@ -7,7 +7,6 @@ from altmo.commands.create_study_area_parts import create_study_area_parts
 from altmo.commands.network_distances import network_distances
 from altmo.commands.straight_distances import straight_distance
 from altmo.commands.export import export
-from altmo.commands.raster import raster
 
 
 @click.group()
@@ -22,7 +21,13 @@ cli.add_command(create_study_area_parts)
 cli.add_command(network_distances)
 cli.add_command(straight_distance)
 cli.add_command(export)
-cli.add_command(raster)
+
+# Only available with optional dependency
+try:
+    from altmo.commands.raster import raster
+    cli.add_command(raster)
+except ImportError:
+    pass
 
 
 if __name__ == '__main__':
