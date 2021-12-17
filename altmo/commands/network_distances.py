@@ -14,11 +14,9 @@ from altmo.data.read import (
     get_study_area_residences
 )
 from altmo.data.write import add_amenity_residence_distance
-from altmo.settings import PG_DSN, VALHALLA_SERVER
+from altmo.settings import PG_DSN, VALHALLA_SERVER, MODE_PEDESTRIAN, MODE_BICYCLE
 
 VALHALLA_API_MATRIX_ENDPOINT = f'{VALHALLA_SERVER}/sources_to_targets'
-MODE_PEDESTRIAN = 'pedestrian'
-MODE_BICYCLE = 'bicycle'
 
 
 @click.command('network')

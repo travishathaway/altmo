@@ -8,6 +8,10 @@ TBL_PREFIX = os.getenv('ALTMO_TBL_PREFIX', 'altmo_')
 SRS_ID = os.getenv('ALTMO_SRS_ID', 3857)
 CONFIG_FILE_NAME = 'altmo-config.yml'
 
+# Valhalla Settings
+MODE_PEDESTRIAN = 'pedestrian'
+MODE_BICYCLE = 'bicycle'
+
 
 def get_config_file(config_file_name) -> str:
     """
@@ -29,6 +33,7 @@ def parse_config_file(config_file: str) -> dict:
         return yaml.safe_load(file)
 
 
+# Values our updated from our altmo-config.yml
 try:
     CONFIG_DATA = parse_config_file(get_config_file(CONFIG_FILE_NAME))
     PG_DSN = CONFIG_DATA['pg_dsn']

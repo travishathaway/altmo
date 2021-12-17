@@ -11,8 +11,11 @@ from altmo.data.read import (
     get_residence_composite_average_times,
 )
 from altmo.data.decorators import psycopg2_cur
-from altmo.settings import PG_DSN, SRS_ID, CONFIG_DATA
-from altmo.utils import get_residence_composite_as_geojson, get_amenity_categories, get_available_amenity_categories
+from altmo.settings import PG_DSN, SRS_ID, CONFIG_DATA, MODE_PEDESTRIAN, MODE_BICYCLE
+from altmo.utils import (
+    get_residence_composite_as_geojson, get_amenity_categories, get_available_amenity_categories,
+    validate_mode
+)
 
 
 EXPORT_TYPE_ALL = 'all'
@@ -94,7 +97,7 @@ def process_properties(_, __, value) -> List[str]:
 @click.command('export')
 @click.argument('study_area', type=str)
 @click.argument('export_type', type=click.Choice(choices=tuple(export_factory.keys())))
-@click.option('-m', '--mode', default='pedestrian')
+@click.option('-m', '--mode', default=MODE_PEDESTRIAN, type=click.UNPROCESSED, callback=validate_mode)
 @click.option('-d', '--export-dir', default='export')
 @click.option('-s', '--srs-id', default=SRS_ID)
 @click.option('-p', '--properties', type=click.UNPROCESSED, callback=process_properties)

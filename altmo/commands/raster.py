@@ -5,14 +5,14 @@ import json
 import click
 from osgeo import gdal
 
-from altmo.settings import PG_DSN, SRS_ID, CONFIG_DATA
+from altmo.settings import PG_DSN, SRS_ID, CONFIG_DATA, MODE_PEDESTRIAN
 from altmo.data.decorators import psycopg2_cur
 from altmo.data.read import (
     get_study_area, get_residence_composite_average_times
 )
 from altmo.utils import (
     get_available_amenity_categories, get_residence_composite_as_geojson,
-    get_amenity_categories
+    get_amenity_categories, validate_mode
 )
 
 AVAILABLE_FIELDS = (
@@ -23,7 +23,7 @@ AVAILABLE_FIELDS = (
 @click.command('raster')
 @click.argument('study_area')
 @click.argument('outfile')
-@click.option('-m', '--mode', default='pedestrian')
+@click.option('-m', '--mode', default=MODE_PEDESTRIAN, type=click.UNPROCESSED, callback=validate_mode)
 @click.option('-f', '--field', default='all')
 @click.option('-r', '--resolution', default=100)
 @click.option('-s', '--srs-id', default=SRS_ID)
