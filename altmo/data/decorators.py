@@ -3,8 +3,11 @@ from functools import wraps
 
 import psycopg2
 
+from altmo.settings import get_config
 
-def psycopg2_cur(conn_info):
+
+@get_config
+def psycopg2_cur(config):
     """Wrap function to setup and tear down a Postgres connection while
     providing a cursor object to make queries with.
     """
@@ -13,7 +16,7 @@ def psycopg2_cur(conn_info):
         @wraps(f)
         def wrapper(*args, **kwargs):
             # Setup postgres connection
-            connection = psycopg2.connect(conn_info)
+            connection = psycopg2.connect(config.PG_DSN)
 
             try:
                 cursor = connection.cursor()

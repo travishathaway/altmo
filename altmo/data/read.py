@@ -1,23 +1,13 @@
 from typing import List, Tuple, Dict
 
 from altmo.utils import get_category_amenity_keys
-from altmo.settings import get_config_obj
-
-from .schema import (
-    STUDY_AREA_TBL,
-    RESIDENCES_TBL,
-    AMENITIES_TBL,
-    RES_AMENITY_DIST_TBL,
-    RES_AMENITY_DIST_STR_TBL,
-)
-
-config = get_config_obj()
+from altmo.settings import TABLES
 
 
 def get_study_area(cursor, name) -> tuple:
     """returns a single study area"""
     cursor.execute(
-        f"SELECT id, name, description, geom FROM {STUDY_AREA_TBL} WHERE name = %s",
+        f"SELECT id, name, description, geom FROM {TABLES.STUDY_AREA_TBL} WHERE name = %s",
         (name,),
     )
 
@@ -29,7 +19,7 @@ def get_amenity_name_category(
 ) -> List[tuple]:
     """return all the amenity category, amenity name pairs for a single study_area"""
     sql = (
-        f"SELECT DISTINCT name, category FROM {AMENITIES_TBL} WHERE study_area_id = %s"
+        f"SELECT DISTINCT name, category FROM {TABLES.AMENITIES_TBL} WHERE study_area_id = %s"
     )
     params = (study_area_id,)
 
@@ -51,7 +41,7 @@ def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
         SELECT
             id, ST_X(ST_Transform(geom, 4326)), ST_Y(ST_Transform(geom, 4326))
         FROM
-            {RESIDENCES_TBL}
+            {TABLES.RESIDENCES_TBL}
         WHERE study_area_id = %s
     """
     cursor.execute(sql, (study_area_id,))
@@ -65,9 +55,9 @@ def get_residence_amenity_straight_distance(
     SELECT
         amenity_id, ST_X(ST_Transform(am.geom, 4326)), ST_Y(ST_Transform(am.geom, 4326))
     FROM
-        {RES_AMENITY_DIST_STR_TBL}
+        {TABLES.RES_AMENITY_DIST_STR_TBL}
     JOIN
-        {AMENITIES_TBL} am
+        {TABLES.AMENITIES_TBL} am
     ON
         amenity_id = am.id
     WHERE
@@ -94,7 +84,7 @@ def _get_residence_composite_average_times_sql(
     weights: Dict[str, Dict],
     amenities: List[tuple],
     include_geojson=False,
-    srs_id=config.SRS_ID,
+    srs_id=3857,
 ) -> Tuple[tuple, str]:
     """
     Retrieves a list of residences with their composite averages based on amenities config.
@@ -131,9 +121,9 @@ def _get_residence_composite_average_times_sql(
     SELECT
         ra.residence_id as id, a.category || ''_'' || a.name as category, avg(ra.time) as avg_time
     FROM
-        {RES_AMENITY_DIST_TBL} ra
+        {TABLES.RES_AMENITY_DIST_TBL} ra
     LEFT JOIN
-        {AMENITIES_TBL} a
+        {TABLES.AMENITIES_TBL} a
     ON
         a.id = ra.amenity_id
     WHERE
@@ -152,9 +142,9 @@ def _get_residence_composite_average_times_sql(
     SELECT
         DISTINCT a.category || ''_'' || a.name AS category
     FROM
-        {RES_AMENITY_DIST_TBL} ra
+        {TABLES.RES_AMENITY_DIST_TBL} ra
     LEFT JOIN
-        {AMENITIES_TBL} a
+        {TABLES.AMENITIES_TBL} a
     ON
         a.id = ra.amenity_id
     WHERE
@@ -200,7 +190,7 @@ def _get_residence_composite_average_times_sql(
     if include_geojson:
         cols += ("geom",)
         cols_str += f", ST_AsGeoJSON(ST_Transform(r.geom, {srs_id}))"
-        join_stmt = f"LEFT JOIN {RESIDENCES_TBL} r ON r.id = sub.residence_id"
+        join_stmt = f"LEFT JOIN {TABLES.RESIDENCES_TBL} r ON r.id = sub.residence_id"
 
     sql = f"""
     SELECT
@@ -226,7 +216,7 @@ def get_residence_composite_average_times(
     mode: str,
     weights: Dict[str, Dict],
     include_geojson=False,
-    srs_id=config.SRS_ID,
+    srs_id=3857,
 ) -> Tuple[tuple, List[tuple]]:
     """
     Get the residence composites for each residence in a provided study area

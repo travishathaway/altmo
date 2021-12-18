@@ -14,11 +14,7 @@ from altmo.data.read import (
     get_study_area_residences,
 )
 from altmo.data.write import add_amenity_residence_distance
-from altmo.settings import get_config_obj, MODE_PEDESTRIAN, MODE_BICYCLE
-
-config = get_config_obj()
-
-VALHALLA_API_MATRIX_ENDPOINT = f"{config.VALHALLA_SERVER}/sources_to_targets"
+from altmo.settings import get_config, MODE_PEDESTRIAN, MODE_BICYCLE, Config
 
 
 @click.command("network")
@@ -27,7 +23,7 @@ VALHALLA_API_MATRIX_ENDPOINT = f"{config.VALHALLA_SERVER}/sources_to_targets"
 @click.option("-m", "--mode", type=str, default=MODE_PEDESTRIAN)
 @click.option("-c", "--category", type=str)
 @click.option("-n", "--name", type=str)
-@psycopg2_cur(config.PG_DSN)
+@psycopg2_cur()
 def network_distances(cursor, study_area, processes, mode, category, name):
     """calculate network distances between residences and amenities"""
     study_area_id, *_ = get_study_area(cursor, study_area)
@@ -50,8 +46,9 @@ def network_distances(cursor, study_area, processes, mode, category, name):
             click.echo("invalid option supplied for -m|--mode")
 
 
+@get_config
 def set_network_distances(
-    residence_ids: list, mode: str, category: str = None, name: str = None
+    config: Config, residence_ids: list, mode: str, category: str = None, name: str = None
 ) -> None:
     """set network distance for the provided residence ids"""
     with psycopg_context(config.PG_DSN) as cursor:
@@ -63,7 +60,9 @@ def set_network_distances(
                 )
 
 
+@get_config
 def set_residence_amenity_network_distances(
+    config: Config,
     cursor,
     residence_id: int,
     residence_lng: float,
@@ -76,6 +75,7 @@ def set_residence_amenity_network_distances(
     Provided a residence, call the Valhalla API in batches of 50 and then
     create new database records for the nearest amenity distances.
     """
+    matrix_endpoint = f'{config.VALHALLA_SERVER}/sources_to_targets'
     am_dist = get_residence_amenity_straight_distance(
         cursor, residence_id, category=category, name=name
     )
@@ -88,7 +88,7 @@ def set_residence_amenity_network_distances(
             matrix_req = get_matrix_request(
                 (residence_lat, residence_lng), batch, costing=mode
             )
-            resp = requests.post(VALHALLA_API_MATRIX_ENDPOINT, json=matrix_req)
+            resp = requests.post(matrix_endpoint, json=matrix_req)
             new_rows = []
 
             for [distance, *_], (amenity_id, *_) in zip(

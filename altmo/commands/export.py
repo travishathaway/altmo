@@ -11,7 +11,7 @@ from altmo.data.read import (
     get_residence_composite_average_times,
 )
 from altmo.data.decorators import psycopg2_cur
-from altmo.settings import get_config_obj, MODE_PEDESTRIAN
+from altmo.settings import get_config, MODE_PEDESTRIAN, Config
 from altmo.utils import (
     get_residence_composite_as_geojson,
     get_amenity_categories,
@@ -19,17 +19,21 @@ from altmo.utils import (
     validate_mode,
 )
 
-config = get_config_obj()
+# config = get_config_obj()
 
 
 EXPORT_TYPE_ALL = "all"
 EXPORT_TYPE_SINGLE_RESIDENCE = "single_residence"
 
-AVAILABLE_FIELDS = ("all",) + get_available_amenity_categories(config.AMENITIES)
+
+@get_config
+def get_available_fields(config: Config):
+    return ("all",) + get_available_amenity_categories(config.AMENITIES)
 
 
+@get_config
 def get_export_geojson(
-    cursor, study_area_id: int, mode: str, srs_id: str, properties: Union[tuple, None]
+    config: Config, cursor, study_area_id: int, mode: str, srs_id: str, properties: Union[tuple, None]
 ) -> dict:
     """Get the export geojson data as dict"""
     amenities = get_amenity_categories(config.AMENITIES)
@@ -85,11 +89,11 @@ def process_properties(_, __, value) -> List[str]:
     """returns properties param as a list, parses from a comma separated string"""
     if value:
         value_list = [val.strip() for val in value.split(",")]
-
+        available_fields = get_available_fields()
         for val in value_list:
-            if val not in AVAILABLE_FIELDS:
+            if val not in available_fields:
                 raise click.BadParameter(
-                    f'"{val}" is not available. Choices are {", ".join(AVAILABLE_FIELDS)}'
+                    f'"{val}" is not available. Choices are {", ".join(available_fields)}'
                 )
         return value_list or None
 
@@ -105,9 +109,9 @@ def process_properties(_, __, value) -> List[str]:
     callback=validate_mode,
 )
 @click.option("-d", "--export-dir", default="export")
-@click.option("-s", "--srs-id", default=config.SRS_ID)
+@click.option("-s", "--srs-id", default=3857)
 @click.option("-p", "--properties", type=click.UNPROCESSED, callback=process_properties)
-@psycopg2_cur(config.PG_DSN)
+@psycopg2_cur()
 def export(cursor, study_area, export_type, mode, export_dir, srs_id, properties):
     """
     Exports various formats of the analysis. Available formats are:

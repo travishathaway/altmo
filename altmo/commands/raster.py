@@ -5,7 +5,7 @@ import json
 import click
 from osgeo import gdal
 
-from altmo.settings import get_config_obj, MODE_PEDESTRIAN
+from altmo.settings import MODE_PEDESTRIAN, get_config
 from altmo.data.decorators import psycopg2_cur
 from altmo.data.read import get_study_area, get_residence_composite_average_times
 from altmo.utils import (
@@ -14,10 +14,6 @@ from altmo.utils import (
     get_amenity_categories,
     validate_mode,
 )
-
-config = get_config_obj()
-
-AVAILABLE_FIELDS = ("all",) + get_available_amenity_categories(config.AMENITIES)
 
 
 @click.command("raster")
@@ -32,18 +28,21 @@ AVAILABLE_FIELDS = ("all",) + get_available_amenity_categories(config.AMENITIES)
 )
 @click.option("-f", "--field", default="all")
 @click.option("-r", "--resolution", default=100)
-@click.option("-s", "--srs-id", default=config.SRS_ID)
-@psycopg2_cur(config.PG_DSN)
-def raster(cursor, study_area, outfile, mode, field, resolution, srs_id) -> None:
+@click.option("-s", "--srs-id", default=3857)
+@psycopg2_cur()
+@get_config
+def raster(config, cursor, study_area, outfile, mode, field, resolution, srs_id) -> None:
     """Generates raster data from database"""
     study_area_id, *_ = get_study_area(cursor, study_area)
     if not study_area_id:
         click.echo("study area not found")
         sys.exit(1)
 
-    if field not in AVAILABLE_FIELDS:
+    available_fields = ("all",) + get_available_amenity_categories(config.AMENITIES)
+
+    if field not in available_fields:
         click.echo(
-            f'Field not found. Pick one of the following: \n{",".join(AVAILABLE_FIELDS)}'
+            f'Field not found. Pick one of the following: \n{",".join(available_fields)}'
         )
         sys.exit(1)
 

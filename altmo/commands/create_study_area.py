@@ -6,9 +6,6 @@ from psycopg2.errors import UniqueViolation
 
 from altmo.data.decorators import psycopg2_cur
 from altmo.data import write
-from altmo.settings import get_config_obj
-
-config = get_config_obj()
 
 
 @click.command("csa")
@@ -16,7 +13,7 @@ config = get_config_obj()
 @click.argument("name", type=str)
 @click.argument("description", type=str)
 @click.argument("srs_id", type=int)
-@psycopg2_cur(config.PG_DSN)
+@psycopg2_cur()
 def create_study_area(cursor, boundary, name, description, srs_id):
     """
     (Create Study Area) import geojson boundary into our study_areas table

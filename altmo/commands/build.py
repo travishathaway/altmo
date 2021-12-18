@@ -1,6 +1,6 @@
 import click
 
-from altmo.settings import get_config_obj
+from altmo.settings import get_config
 from altmo.data.write import (
     add_amenities,
     delete_amenities,
@@ -13,13 +13,12 @@ from altmo.data.read import get_study_area
 from altmo.data.schema import psycopg2_cur
 from altmo.utils import get_amenities_from_config, get_amenity_category_map
 
-config = get_config_obj()
-
 
 @click.command()
 @click.argument("study_area", type=str)
-@psycopg2_cur(config.PG_DSN)
-def build(cursor, study_area):
+@psycopg2_cur()
+@get_config
+def build(config, cursor, study_area):
     """Builds a database of amenities and residences from OSM data"""
     study_area_id, *_ = get_study_area(cursor, study_area)
     amenities = get_amenities_from_config(config.AMENITIES)

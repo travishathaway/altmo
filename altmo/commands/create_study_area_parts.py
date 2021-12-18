@@ -6,16 +6,13 @@ from psycopg2.errors import UniqueViolation
 
 from altmo.data.decorators import psycopg2_cur
 from altmo.data.read import get_study_area
-from altmo.data.schema import STUDY_PARTS_TBL
-from altmo.settings import get_config_obj
-
-config = get_config_obj()
+from altmo.settings import TABLES
 
 
 @click.command("csap")
 @click.argument("study_area")
 @click.argument("boundary", type=click.File("r"))
-@psycopg2_cur(config.PG_DSN)
+@psycopg2_cur()
 def create_study_area_parts(cursor, study_area, boundary):
     """
     (Create Study Area Parts) import geojson boundary into our study_area_parts table
@@ -47,7 +44,7 @@ def create_study_area_parts(cursor, study_area, boundary):
 
     try:
         sql = f"""
-            INSERT INTO {STUDY_PARTS_TBL} (name, description, geom, study_area_id)
+            INSERT INTO {TABLES.STUDY_PARTS_TBL} (name, description, geom, study_area_id)
             VALUES (%s, %s, ST_SetSRID(ST_GeomFromGeoJSON(%s), %s), %s)
         """
         for part in study_area_parts:

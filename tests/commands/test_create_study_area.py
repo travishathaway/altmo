@@ -10,10 +10,6 @@ from tests.fixtures.boundary import BOUNDARY_NEW_YORK
 
 def test_happy_path(mock_db):
     """Test a successful run of this command"""
-    # Set up mocks
-    mock_con = mock_db.return_value
-    mock_cur = mock_con.cursor.return_value
-
     runner = CliRunner()
     boundary_file = 'boundary.geojson'
     srs_id = BOUNDARY_NEW_YORK['crs']['properties']['srs_id']
