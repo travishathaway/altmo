@@ -1,9 +1,11 @@
 # Service configurations
-pg_dsn: 'dbname=sweeden_osm_2021_12_11 user=thath host=localhost port=5432 password=thath'
-valhalla_server: 'http://localhost:8003'
+PG_DSN: 'dbname=sweeden_osm_2021_12_11 user=thath host=localhost port=5432 password=thath'
+VALHALLA_SERVER: 'http://localhost:8003'
+TBL_PREFIX: 'altmo_'
+SRS_ID: 3857
 
 # Amenity configuration
-amenities:
+AMENITIES:
   include_natural_amenities: true
   categories:
     school:

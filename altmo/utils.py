@@ -15,10 +15,10 @@ def get_amenities_from_config(config_data: Dict[str, Dict[str, Dict]]) -> List[s
     """
     try:
         config_amenities: List[str] = []
-        amenity_config = config_data['amenities']['categories']
+        amenity_config = config_data["categories"]
 
         for category, amenities in amenity_config.items():
-            if category != 'nature':
+            if category != "nature":
                 for amenity in amenities.keys():
                     config_amenities.append(amenity)
         return config_amenities
@@ -31,7 +31,7 @@ def get_amenity_category_map(config_data: Dict[str, Dict]) -> Dict:
     try:
         return {
             amenity: category
-            for category, amenities in config_data['amenities']['categories'].items()
+            for category, amenities in config_data["categories"].items()
             for amenity in amenities
         }
     except KeyError:
@@ -44,7 +44,7 @@ def get_category_amenity_keys(categories: Dict[str, Dict]) -> List[str]:
     """
     try:
         return [
-            f'{category}_{amenity}'
+            f"{category}_{amenity}"
             for category, amenities in categories.items()
             for amenity in amenities.keys()
         ]
@@ -52,14 +52,16 @@ def get_category_amenity_keys(categories: Dict[str, Dict]) -> List[str]:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
 
-def get_amenity_category_weights(config_data: Dict[str, Dict[str, Dict]]) -> Dict[str, float]:
+def get_amenity_category_weights(
+    config_data: Dict[str, Dict[str, Dict]]
+) -> Dict[str, float]:
     """
     Returns amenity category and amenity name combined together which can be used in a pivot table query
     """
     try:
-        amenity_categories = config_data['amenities']['categories']
+        amenity_categories = config_data["categories"]
         return {
-            f'{category}_{amenity}': weight
+            f"{category}_{amenity}": weight
             for category, amenities in amenity_categories.items()
             for amenity, weight in amenities.items()
         }
@@ -72,7 +74,7 @@ def get_amenity_categories(config_data: Dict[str, Dict]) -> Dict[str, Dict]:
     safely returns the configured amenities. If they are not there then a AltmoConfigError is thrown
     """
     try:
-        return config_data['amenities']['categories']
+        return config_data["categories"]
     except KeyError:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
@@ -93,7 +95,9 @@ def get_residence_composite_as_dicts(cols: tuple, data: List[tuple]) -> List[Dic
     return ret_list
 
 
-def get_residence_composite_as_geojson(cols: tuple, data: List[tuple], props: tuple = None) -> Dict:
+def get_residence_composite_as_geojson(
+    cols: tuple, data: List[tuple], props: tuple = None
+) -> Dict:
     """
     Gets the residence composite results as geojson dict.
 
@@ -103,24 +107,24 @@ def get_residence_composite_as_geojson(cols: tuple, data: List[tuple], props: tu
                   Passing in `None` (default) includes everything.
                   Pass in a empty tuple for no properties.
     """
-    geojson_data = {
-        'type': 'FeatureCollection',
-        'features': []
-    }
+    geojson_data = {"type": "FeatureCollection", "features": []}
     if props is None:
-        props = [m for m in cols if m not in ('geom', 'residence_id')]
+        props = [m for m in cols if m not in ("geom", "residence_id")]
 
     for row in data:
         row_data = dict(zip(cols, row))
-        geojson_data['features'].append({
-            'type': 'Feature',
-            'id': row_data['residence_id'],
-            'geometry': json.loads(row_data['geom']),
-            'properties': {
-                x: round(float(y), ndigits=5)
-                for x, y in row_data.items() if x in props
+        geojson_data["features"].append(
+            {
+                "type": "Feature",
+                "id": row_data["residence_id"],
+                "geometry": json.loads(row_data["geom"]),
+                "properties": {
+                    x: round(float(y), ndigits=5)
+                    for x, y in row_data.items()
+                    if x in props
+                },
             }
-        })
+        )
 
     return geojson_data
 
@@ -134,7 +138,7 @@ def get_available_amenity_categories(config_data: Dict[str, Dict]) -> tuple:
     :raises: AltmoConfigError
     """
     try:
-        return tuple([cat for cat in config_data['amenities']['categories'].keys()])
+        return tuple([cat for cat in config_data["categories"].keys()])
     except KeyError:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
@@ -144,6 +148,8 @@ def validate_mode(_, __, value) -> List[str]:
     if value:
         available_choices = (MODE_BICYCLE, MODE_PEDESTRIAN)
         if value not in available_choices:
-            raise click.BadParameter(f'"{value}" is not valid. Choices are {", ".join(available_choices)}')
+            raise click.BadParameter(
+                f'"{value}" is not valid. Choices are {", ".join(available_choices)}'
+            )
 
         return value or None

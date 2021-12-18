@@ -5,29 +5,35 @@ import json
 import click
 from osgeo import gdal
 
-from altmo.settings import PG_DSN, SRS_ID, CONFIG_DATA, MODE_PEDESTRIAN
+from altmo.settings import get_config_obj, MODE_PEDESTRIAN
 from altmo.data.decorators import psycopg2_cur
-from altmo.data.read import (
-    get_study_area, get_residence_composite_average_times
-)
+from altmo.data.read import get_study_area, get_residence_composite_average_times
 from altmo.utils import (
-    get_available_amenity_categories, get_residence_composite_as_geojson,
-    get_amenity_categories, validate_mode
+    get_available_amenity_categories,
+    get_residence_composite_as_geojson,
+    get_amenity_categories,
+    validate_mode,
 )
 
-AVAILABLE_FIELDS = (
-    'all',
-) + get_available_amenity_categories(CONFIG_DATA)
+config = get_config_obj()
+
+AVAILABLE_FIELDS = ("all",) + get_available_amenity_categories(config.AMENITIES)
 
 
-@click.command('raster')
-@click.argument('study_area')
-@click.argument('outfile')
-@click.option('-m', '--mode', default=MODE_PEDESTRIAN, type=click.UNPROCESSED, callback=validate_mode)
-@click.option('-f', '--field', default='all')
-@click.option('-r', '--resolution', default=100)
-@click.option('-s', '--srs-id', default=SRS_ID)
-@psycopg2_cur(PG_DSN)
+@click.command("raster")
+@click.argument("study_area")
+@click.argument("outfile")
+@click.option(
+    "-m",
+    "--mode",
+    default=MODE_PEDESTRIAN,
+    type=click.UNPROCESSED,
+    callback=validate_mode,
+)
+@click.option("-f", "--field", default="all")
+@click.option("-r", "--resolution", default=100)
+@click.option("-s", "--srs-id", default=config.SRS_ID)
+@psycopg2_cur(config.PG_DSN)
 def raster(cursor, study_area, outfile, mode, field, resolution, srs_id) -> None:
     """Generates raster data from database"""
     study_area_id, *_ = get_study_area(cursor, study_area)
@@ -36,31 +42,35 @@ def raster(cursor, study_area, outfile, mode, field, resolution, srs_id) -> None
         sys.exit(1)
 
     if field not in AVAILABLE_FIELDS:
-        click.echo(f'Field not found. Pick one of the following: \n{",".join(AVAILABLE_FIELDS)}')
+        click.echo(
+            f'Field not found. Pick one of the following: \n{",".join(AVAILABLE_FIELDS)}'
+        )
         sys.exit(1)
 
-    amenities = get_amenity_categories(CONFIG_DATA)
+    amenities = get_amenity_categories(config.AMENITIES)
     cols, data = get_residence_composite_average_times(
-        cursor, study_area_id, mode, amenities,
-        srs_id=srs_id, include_geojson=True
+        cursor, study_area_id, mode, amenities, srs_id=srs_id, include_geojson=True
     )
 
     geojson = get_residence_composite_as_geojson(cols, data)
 
-    pts = [
-        row['geometry']['coordinates']
-        for row in geojson['features']
-    ]
+    pts = [row["geometry"]["coordinates"] for row in geojson["features"]]
 
     [[lrx, lry], [ulx, uly]] = get_bounding_box(pts)
     x_size = round((ulx - lrx) / resolution)
     y_size = round((uly - lry) / resolution)
 
     # inverse distance to a power
-    gdal.Grid(outfile, json.dumps(geojson), zfield=field,
-              algorithm="invdist:power=5:radius1=200:radius2=200:nodata=-1",
-              outputSRS=f'EPSG:{SRS_ID}',
-              outputBounds=[ulx, uly, lrx, lry], width=x_size, height=y_size)
+    gdal.Grid(
+        outfile,
+        json.dumps(geojson),
+        zfield=field,
+        algorithm="invdist:power=5:radius1=200:radius2=200:nodata=-1",
+        outputSRS=f"EPSG:{config.SRS_ID}",
+        outputBounds=[ulx, uly, lrx, lry],
+        width=x_size,
+        height=y_size,
+    )
 
 
 def get_bounding_box(pts: List[Tuple]) -> List:

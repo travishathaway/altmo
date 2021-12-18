@@ -25,10 +25,11 @@ cli.add_command(export)
 # Only available with optional dependency
 try:
     from altmo.commands.raster import raster
+
     cli.add_command(raster)
 except ImportError:
-    pass
+    raster = None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

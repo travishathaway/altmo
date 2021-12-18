@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict
 
 from altmo.utils import get_category_amenity_keys
-from altmo.settings import SRS_ID as DEFAULT_SRS_ID
+from altmo.settings import get_config_obj
 
 from .schema import (
     STUDY_AREA_TBL,
@@ -11,26 +11,35 @@ from .schema import (
     RES_AMENITY_DIST_STR_TBL,
 )
 
+config = get_config_obj()
+
 
 def get_study_area(cursor, name) -> tuple:
     """returns a single study area"""
-    cursor.execute(f'SELECT id, name, description, geom FROM {STUDY_AREA_TBL} WHERE name = %s', (name,))
+    cursor.execute(
+        f"SELECT id, name, description, geom FROM {STUDY_AREA_TBL} WHERE name = %s",
+        (name,),
+    )
 
     return cursor.fetchone() or (None, None)
 
 
-def get_amenity_name_category(cursor, study_area_id: int, category=None, name=None) -> List[tuple]:
+def get_amenity_name_category(
+    cursor, study_area_id: int, category=None, name=None
+) -> List[tuple]:
     """return all the amenity category, amenity name pairs for a single study_area"""
-    sql = f'SELECT DISTINCT name, category FROM {AMENITIES_TBL} WHERE study_area_id = %s'
+    sql = (
+        f"SELECT DISTINCT name, category FROM {AMENITIES_TBL} WHERE study_area_id = %s"
+    )
     params = (study_area_id,)
 
     if category:
-        sql += ' AND category = %s'
+        sql += " AND category = %s"
         params += (category,)
 
     if name:
-        sql += ' AND name = %s'
-        params += (name, )
+        sql += " AND name = %s"
+        params += (name,)
 
     cursor.execute(sql, params)
     return cursor.fetchall()
@@ -38,23 +47,24 @@ def get_amenity_name_category(cursor, study_area_id: int, category=None, name=No
 
 def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
     """fetch all residences for a study area"""
-    sql = f'''
-        SELECT 
+    sql = f"""
+        SELECT
             id, ST_X(ST_Transform(geom, 4326)), ST_Y(ST_Transform(geom, 4326))
-        FROM 
+        FROM
             {RESIDENCES_TBL}
         WHERE study_area_id = %s
-    '''
+    """
     cursor.execute(sql, (study_area_id,))
     return cursor.fetchall()
 
 
 def get_residence_amenity_straight_distance(
-        cursor, residence_id: int, category: str = None, name: str = None) -> List[Tuple]:
-    sql = f'''
-    SELECT 
+    cursor, residence_id: int, category: str = None, name: str = None
+) -> List[Tuple]:
+    sql = f"""
+    SELECT
         amenity_id, ST_X(ST_Transform(am.geom, 4326)), ST_Y(ST_Transform(am.geom, 4326))
-    FROM 
+    FROM
         {RES_AMENITY_DIST_STR_TBL}
     JOIN
         {AMENITIES_TBL} am
@@ -62,16 +72,16 @@ def get_residence_amenity_straight_distance(
         amenity_id = am.id
     WHERE
         residence_id = %s
-    '''
-    params = (residence_id, )
+    """
+    params = (residence_id,)
 
     if category is not None:
-        sql += ' AND am.category = %s'
-        params += (category, )
+        sql += " AND am.category = %s"
+        params += (category,)
 
     if name is not None:
-        sql += ' AND am.name = %s'
-        params += (name, )
+        sql += " AND am.name = %s"
+        params += (name,)
 
     cursor.execute(sql, params)
 
@@ -79,8 +89,12 @@ def get_residence_amenity_straight_distance(
 
 
 def _get_residence_composite_average_times_sql(
-    study_area_id: int, mode: str, weights: Dict[str, Dict], amenities: List[tuple],
-    include_geojson=False, srs_id=DEFAULT_SRS_ID
+    study_area_id: int,
+    mode: str,
+    weights: Dict[str, Dict],
+    amenities: List[tuple],
+    include_geojson=False,
+    srs_id=config.SRS_ID,
 ) -> Tuple[tuple, str]:
     """
     Retrieves a list of residences with their composite averages based on amenities config.
@@ -104,13 +118,16 @@ def _get_residence_composite_average_times_sql(
     config_cat_amts = get_category_amenity_keys(weights)
 
     # if it is not in our database or the config file, we do not use it
-    amenity_categories = sorted([
-        f'{category}_{amenity}' for amenity, category in amenities
-        if f'{category}_{amenity}' in config_cat_amts
-    ])
+    amenity_categories = sorted(
+        [
+            f"{category}_{amenity}"
+            for amenity, category in amenities
+            if f"{category}_{amenity}" in config_cat_amts
+        ]
+    )
     cat_amt_filter_str = "'', ''".join(amenity_categories)
 
-    sub_sql = f'''
+    sub_sql = f"""
     SELECT
         ra.residence_id as id, a.category || ''_'' || a.name as category, avg(ra.time) as avg_time
     FROM
@@ -129,26 +146,26 @@ def _get_residence_composite_average_times_sql(
         ra.residence_id, a.category, a.name, ra.mode
     ORDER BY
         ra.residence_id
-    '''
+    """
 
-    distinct_sql = f'''
+    distinct_sql = f"""
     SELECT
         DISTINCT a.category || ''_'' || a.name AS category
     FROM
         {RES_AMENITY_DIST_TBL} ra
     LEFT JOIN
         {AMENITIES_TBL} a
-    ON 
+    ON
         a.id = ra.amenity_id
     WHERE
         a.category || ''_'' || a.name IN (''{cat_amt_filter_str}'')
-    ORDER BY 
+    ORDER BY
         a.category || ''_'' || a.name
-    '''
+    """
 
     # Define the columns we extract from the `crosstab` function
-    pivot_columns_with_type = [f'{col} NUMERIC' for col in amenity_categories]
-    pivot_columns_str = ', '.join(pivot_columns_with_type)
+    pivot_columns_with_type = [f"{col} NUMERIC" for col in amenity_categories]
+    pivot_columns_str = ", ".join(pivot_columns_with_type)
 
     def get_category_avg_stmts_str() -> str:
         cat_avg_stmts: List[str] = []
@@ -158,51 +175,58 @@ def _get_residence_composite_average_times_sql(
             for amenity, wght in amts.items():
                 if (amenity, category) in [(a, c) for a, c in amenities]:
                     wght_stmts.append(f'{category}_{amenity} * {wght["weight"]}')
-            wght_str = '+ '.join(wght_stmts)
-            cat_avg_stmts.append(f'({wght_str}) as {category}')
+            wght_str = "+ ".join(wght_stmts)
+            cat_avg_stmts.append(f"({wght_str}) as {category}")
 
-        return ','.join(cat_avg_stmts)
+        return ",".join(cat_avg_stmts)
 
     # Used for the top level select in our query
     categories = {c for _, c in amenities if c in weights}
-    categories_str = ', '.join(categories)
+    categories_str = ", ".join(categories)
 
-    all_avg_str = ''
+    all_avg_str = ""
     if len(amenities) > 0:
         factor = 1.0 / len(categories)
-        all_avg_str = '+ '.join([f'{c} * {factor}' for c in categories])
-        all_avg_str = f' ({all_avg_str}) as all'
+        all_avg_str = "+ ".join([f"{c} * {factor}" for c in categories])
+        all_avg_str = f" ({all_avg_str}) as all"
 
-    cols = ('residence_id', 'all', ) + tuple(categories)
-    cols_str = f'residence_id, {all_avg_str}, {categories_str}'
-    join_stmt = ''
+    cols = (
+        "residence_id",
+        "all",
+    ) + tuple(categories)
+    cols_str = f"residence_id, {all_avg_str}, {categories_str}"
+    join_stmt = ""
 
     if include_geojson:
-        cols += ('geom', )
-        cols_str += f', ST_AsGeoJSON(ST_Transform(r.geom, {srs_id}))'
-        join_stmt = f'LEFT JOIN {RESIDENCES_TBL} r ON r.id = sub.residence_id'
+        cols += ("geom",)
+        cols_str += f", ST_AsGeoJSON(ST_Transform(r.geom, {srs_id}))"
+        join_stmt = f"LEFT JOIN {RESIDENCES_TBL} r ON r.id = sub.residence_id"
 
-    sql = f'''
+    sql = f"""
     SELECT
         {cols_str}
     FROM (
         SELECT
             residence_id, {get_category_avg_stmts_str()}
-        FROM 
+        FROM
             crosstab('{sub_sql}', '{distinct_sql}')
         AS (
             residence_id INTEGER, {pivot_columns_str}
         )
     ) as sub
     {join_stmt}
-    '''
+    """
 
     return cols, sql
 
 
 def get_residence_composite_average_times(
-    cursor, study_area_id: int, mode: str, weights: Dict[str, Dict],
-    include_geojson=False, srs_id=DEFAULT_SRS_ID
+    cursor,
+    study_area_id: int,
+    mode: str,
+    weights: Dict[str, Dict],
+    include_geojson=False,
+    srs_id=config.SRS_ID,
 ) -> Tuple[tuple, List[tuple]]:
     """
     Get the residence composites for each residence in a provided study area
@@ -211,10 +235,13 @@ def get_residence_composite_average_times(
     """
     amenities = get_amenity_name_category(cursor, study_area_id)
     cols, sql = _get_residence_composite_average_times_sql(
-        study_area_id, mode, weights, amenities,
-        include_geojson=include_geojson, srs_id=srs_id
+        study_area_id,
+        mode,
+        weights,
+        amenities,
+        include_geojson=include_geojson,
+        srs_id=srs_id,
     )
     cursor.execute(sql)
 
     return cols, cursor.fetchall()
-

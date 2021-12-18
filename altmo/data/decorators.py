@@ -5,9 +5,10 @@ import psycopg2
 
 
 def psycopg2_cur(conn_info):
-    """Wrap function to setup and tear down a Postgres connection while 
+    """Wrap function to setup and tear down a Postgres connection while
     providing a cursor object to make queries with.
     """
+
     def wrap(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -22,9 +23,11 @@ def psycopg2_cur(conn_info):
                 # Close connection
                 connection.commit()
                 connection.close()
-            
+
             return return_val
+
         return wrapper
+
     return wrap
 
 
