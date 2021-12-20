@@ -78,6 +78,79 @@ def get_residence_amenity_straight_distance(
     return cursor.fetchall()
 
 
+def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) -> int:
+    """Gets the count of the current number of records in the straight distances table for a study_area_id"""
+    sql = f"""
+    SELECT
+        count(*)
+    FROM
+        {TABLES.RES_AMENITY_DIST_STR_TBL}
+    JOIN
+        {TABLES.AMENITIES_TBL} am
+    ON
+        amenity_id = am.id
+    JOIN
+        {TABLES.RESIDENCES_TBL} r
+    ON
+        residence_id = r.id
+    WHERE
+        r.study_area_id = %s
+    """
+    params = (study_area_id, )
+    cursor.execute(sql, params)
+
+    result = cursor.fetchone()
+
+    return result[0] if result else 0
+
+
+async def get_residence_amenity_straight_distance_async(
+    cursor, study_area_id: int, start: int = 0, limit: int = 1000, srs_id: int = 4326,
+    category: str = None, name: str = None
+) -> List[Tuple]:
+    params = (srs_id, srs_id, srs_id, srs_id, study_area_id, start, limit)
+
+    extra_where_sql = ''
+    if category is not None:
+        extra_where_sql += " AND am.category = %s"
+        params += (category,)
+
+    if name is not None:
+        extra_where_sql += " AND am.name = %s"
+        params += (name,)
+
+    sql = f"""
+    SELECT
+        residence_id,
+        amenity_id, 
+        ST_Y(ST_Transform(r.geom, %s)) as residence_lat,
+        ST_X(ST_Transform(r.geom, %s)) as residence_lng,
+        ST_Y(ST_Transform(am.geom, %s)) as amenity_lat,
+        ST_X(ST_Transform(am.geom, %s)) as amenity_lng
+    FROM
+        {TABLES.RES_AMENITY_DIST_STR_TBL}
+    JOIN
+        {TABLES.AMENITIES_TBL} am
+    ON
+        amenity_id = am.id
+    JOIN
+        {TABLES.RESIDENCES_TBL} r
+    ON
+        residence_id = r.id
+    WHERE
+        r.study_area_id = %s
+    {extra_where_sql}
+    ORDER BY
+        r.id
+    OFFSET %s
+    LIMIT %s
+    """
+
+    await cursor.execute(sql, params)
+    result = await cursor.fetchall()
+    return result
+
+
 def _get_residence_composite_average_times_sql(
     study_area_id: int,
     mode: str,

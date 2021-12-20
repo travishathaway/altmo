@@ -1,9 +1,6 @@
 import json
 from typing import List, Dict
 
-import click
-
-from altmo.settings import MODE_PEDESTRIAN, MODE_BICYCLE
 from .errors import AltmoConfigError, CONFIG_ERROR_MSG
 
 
@@ -141,15 +138,3 @@ def get_available_amenity_categories(config_data: Dict[str, Dict]) -> tuple:
         return tuple([cat for cat in config_data["categories"].keys()])
     except KeyError:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
-
-
-def validate_mode(_, __, value) -> List[str]:
-    """validates mode parameter"""
-    if value:
-        available_choices = (MODE_BICYCLE, MODE_PEDESTRIAN)
-        if value not in available_choices:
-            raise click.BadParameter(
-                f'"{value}" is not valid. Choices are {", ".join(available_choices)}'
-            )
-
-        return value or None

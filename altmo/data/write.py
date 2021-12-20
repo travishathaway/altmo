@@ -4,6 +4,7 @@ from typing import List, Tuple, Union, Dict, Generator
 from psycopg2.extras import execute_values
 
 from altmo.settings import TABLES
+from altmo.data.extras import execute_values as execute_values_async
 
 
 def create_study_area(cursor, data: dict, srs_id: Union[int, str]) -> None:
@@ -252,10 +253,22 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
             {TABLES.RES_AMENITY_DIST_TBL} (distance, time, amenity_id, residence_id, mode)
         VALUES %s
     """
-    try:
-        execute_values(cursor, sql, records, template=None, page_size=100)
-    except Exception as exc:
-        raise exc
+    execute_values(cursor, sql, records, template=None, page_size=100)
+
+
+async def add_amenity_residence_distance_async(cursor, records: List[Tuple]) -> None:
+    """
+    adds network residence amenity distances
+
+    tuple needs to be in the following order:
+        distance, time, amenity_id, residence_id, mode
+    """
+    sql = f"""
+        INSERT INTO
+            {TABLES.RES_AMENITY_DIST_TBL} (distance, time, amenity_id, residence_id, mode)
+        VALUES %s
+    """
+    await execute_values_async(cursor, sql, records, template=None, page_size=100)
 
 
 def add_residence_amenity_category_distances(

@@ -6,20 +6,15 @@ from typing import List, Union
 import click
 from psycopg2.extras import register_hstore
 
-from altmo.data.read import (
-    get_study_area,
-    get_residence_composite_average_times,
-)
+from altmo.data.read import get_residence_composite_average_times
 from altmo.data.decorators import psycopg2_cur
 from altmo.settings import get_config, MODE_PEDESTRIAN, Config
 from altmo.utils import (
     get_residence_composite_as_geojson,
     get_amenity_categories,
-    get_available_amenity_categories,
-    validate_mode,
+    get_available_amenity_categories
 )
-
-# config = get_config_obj()
+from altmo.validators import validate_mode, validate_study_area
 
 
 EXPORT_TYPE_ALL = "all"
@@ -99,7 +94,7 @@ def process_properties(_, __, value) -> List[str]:
 
 
 @click.command("export")
-@click.argument("study_area", type=str)
+@click.argument("study_area", type=click.UNPROCESSED, callback=validate_study_area)
 @click.argument("export_type", type=click.Choice(choices=tuple(export_factory.keys())))
 @click.option(
     "-m",
@@ -119,12 +114,6 @@ def export(cursor, study_area, export_type, mode, export_dir, srs_id, properties
     - all (single file exported with defined properties included)
     - single_residence (exports individual geojson files for every residence into a directory)
     """
-    study_area_id, *_ = get_study_area(cursor, study_area)
-
-    if not study_area_id:
-        click.echo("study area not found")
-        sys.exit(1)
-
     # kwargs that we pass to all export functions
     kwargs = {
         "mode": mode,
@@ -134,4 +123,4 @@ def export(cursor, study_area, export_type, mode, export_dir, srs_id, properties
     }
     export_func = export_factory.get(export_type)
 
-    export_func(cursor, study_area_id, **kwargs)
+    export_func(cursor, study_area, **kwargs)
