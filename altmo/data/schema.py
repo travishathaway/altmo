@@ -3,7 +3,7 @@ from altmo.settings import get_config, TABLES
 from .decorators import psycopg2_cur
 
 
-@psycopg2_cur()
+@psycopg2_cur
 @get_config
 def create_schema(config, cursor):
     study_areas_sql = f"""
@@ -89,7 +89,7 @@ def create_schema(config, cursor):
     cursor.execute(residence_amenity_standardized_sql)
 
 
-@psycopg2_cur()
+@psycopg2_cur
 def remove_schema(cursor):
     cursor.execute(f"DROP TABLE {TABLES.RES_AMENITY_CAT_DIST_TBL} CASCADE")
     cursor.execute(f"DROP TABLE {TABLES.RES_AMENITY_DIST_TBL} CASCADE")

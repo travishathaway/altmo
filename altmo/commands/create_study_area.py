@@ -13,7 +13,7 @@ from altmo.data import write
 @click.argument("name", type=str)
 @click.argument("description", type=str)
 @click.argument("srs_id", type=int)
-@psycopg2_cur()
+@psycopg2_cur
 def create_study_area(cursor, boundary, name, description, srs_id):
     """
     (Create Study Area) import geojson boundary into our study_areas table

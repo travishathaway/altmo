@@ -106,7 +106,7 @@ def process_properties(_, __, value) -> List[str]:
 @click.option("-d", "--export-dir", default="export")
 @click.option("-s", "--srs-id", default=3857)
 @click.option("-p", "--properties", type=click.UNPROCESSED, callback=process_properties)
-@psycopg2_cur()
+@psycopg2_cur
 def export(cursor, study_area, export_type, mode, export_dir, srs_id, properties):
     """
     Exports various formats of the analysis. Available formats are:

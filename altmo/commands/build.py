@@ -16,7 +16,7 @@ from altmo.utils import get_amenities_from_config, get_amenity_category_map
 
 @click.command()
 @click.argument("study_area", type=str)
-@psycopg2_cur()
+@psycopg2_cur
 @get_config
 def build(config, cursor, study_area):
     """Builds a database of amenities and residences from OSM data"""

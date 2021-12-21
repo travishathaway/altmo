@@ -42,7 +42,7 @@ PARALLEL_SETTINGS = {
 @click.option("-c", "--category", type=str)
 @click.option("-n", "--name", type=str)
 @click.option("-p", "--parallel", type=click.UNPROCESSED, callback=validate_parallel, default=PARALLEL_LOW)
-@psycopg2_cur()
+@psycopg2_cur
 def network_distances(cursor, study_area, mode, category, name, parallel):
     """Calculate network distances between residences and amenities"""
     db_parallel_query: int = 4

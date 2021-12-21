@@ -2,8 +2,11 @@ from typing import List
 
 import click
 
-from altmo.settings import MODE_PEDESTRIAN, MODE_BICYCLE
-from altmo.data.decorators import psycopg2_cur
+from altmo.settings import (
+    MODE_PEDESTRIAN, MODE_BICYCLE, PARALLEL_HIGH, PARALLEL_LOW,
+    config_manager
+)
+from altmo.data.decorators import psycopg2_context
 from altmo.data.read import get_study_area
 
 
@@ -19,19 +22,16 @@ def validate_mode(_, __, value) -> List[str]:
         return value or None
 
 
-@psycopg2_cur()
-def validate_study_area(cursor, _, __, value) -> int:
+def validate_study_area(_, __, value) -> int:
     """validates study_area parameter and returns the study_area_id"""
-    study_area_id, *_ = get_study_area(cursor, value)
+    with config_manager() as config:
+        with psycopg2_context(conn_info=config.PG_DSN) as cursor:
+            study_area_id, *_ = get_study_area(cursor, value)
 
     if not study_area_id:
         raise click.BadParameter(f'Study area "{value}" not found.')
 
     return study_area_id
-
-
-PARALLEL_LOW = 'low'
-PARALLEL_HIGH = 'high'
 
 
 def validate_parallel(_, __, value) -> str:

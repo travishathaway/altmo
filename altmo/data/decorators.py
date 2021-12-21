@@ -8,10 +8,9 @@ from altmo.settings import get_config
 
 @get_config
 def psycopg2_cur(config):
-    """Wrap function to setup and tear down a Postgres connection while
+    """Wrap function to set up and tear down a Postgres connection while
     providing a cursor object to make queries with.
     """
-
     def wrap(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -35,7 +34,7 @@ def psycopg2_cur(config):
 
 
 @contextlib.contextmanager
-def psycopg_context(conn_info):
+def psycopg2_context(conn_info):
     """Context manager for PostgreSQL connections"""
     # Setup postgres connection
     connection = psycopg2.connect(conn_info)
