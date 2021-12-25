@@ -28,3 +28,21 @@ def validate_study_area(cursor, _, __, value) -> int:
         raise click.BadParameter(f'Study area "{value}" not found.')
 
     return study_area_id
+
+
+OUT_DB = 'db'
+OUT_STDOUT = 'stdout'
+OUT_CSV = 'csv'
+
+
+def validate_out(_, __, value) -> List[str]:
+    """validates mode parameter"""
+    if value:
+        available_choices = (OUT_DB, OUT_CSV, OUT_STDOUT)
+        if value not in available_choices:
+            raise click.BadParameter(
+                f'"{value}" is not valid. Choices are {", ".join(available_choices)}'
+            )
+
+        return value or None
+

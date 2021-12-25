@@ -5,7 +5,7 @@ import abc
 import asyncio
 import logging
 import sys
-from collections import defaultdict
+from collections import defaultdict, Sequence
 from dataclasses import dataclass
 from typing import Callable
 
@@ -26,18 +26,18 @@ logging.getLogger("chardet.charsetprober").disabled = True
 @dataclass
 class BatchConfig:
     costing: str
+    out: str
+    file_name: str
 
 
 class ReaderBatchError(Exception):
     pass
 
 
-class ReaderBatch(abc.ABC):
+class ReaderBatch(abc.ABC, Sequence):
     """
     Creates jobs which read data from various sources
     """
-    producers: list[asyncio.Task]
-
     @abc.abstractmethod
     def register(self, queue: asyncio.Queue) -> None:
         ...
@@ -84,7 +84,7 @@ def batch_manager(reader: ReaderBatch, writer: WriterBatch) -> Callable:
         reader.register(queue)
         writer.register(queue)
 
-        await asyncio.gather(*reader.producers)
+        await asyncio.gather(*reader)
         await queue.join()
 
         for con in writer.consumers:
@@ -107,16 +107,29 @@ class ValhallaReaderBatch(ReaderBatch):
         self.data = data
         self.client = client
         self.config = config
+        self._producers = []
+
+    def __getitem__(self, item):
+        """
+        Makes this item behave like a list, using self._producers as a its underlying list
+        """
+        return self._producers[item]
+
+    def __len__(self):
+        """
+        Retrieve the length of the
+        """
+        return len(self._producers)
 
     def register(self, queue: asyncio.Queue) -> None:
         """
         Sets the producers attribute using the provided queue object
         """
-        self.producers = []
+        self._producers = []
         for residence, amenities in self._group_data_by_residence().items():
             for idx, amt_batch in enumerate(grouper(amenities, size=self.VALHALLA_BATCH_LIMIT), start=1):
                 task = asyncio.create_task(self.produce(queue, residence, amt_batch))
-                self.producers.append(task)
+                self._producers.append(task)
                 logging.info(f'Adding Task {idx} for {residence}')
 
     def _group_data_by_residence(self) -> dict:
@@ -154,9 +167,8 @@ class StdOutWriterBatch(WriterBatch):
     """
     Writes val_batch data to std out
     """
-    def __init__(self, print_func: Callable, config: BatchConfig):
+    def __init__(self, config: BatchConfig):
         self.config = config
-        self._print_func = print_func
 
     async def consume(self, queue: asyncio.Queue) -> None:
         """
@@ -165,11 +177,12 @@ class StdOutWriterBatch(WriterBatch):
         while True:
             http_res, db_res = await queue.get()
             for http_data, db_data in zip(http_res, db_res):
-                print((
+                row = (
                     http_data['distance'], http_data['time'],
                     db_data.amenity_id, db_data.residence_id,
                     self.config.costing
-                ))
+                )
+                sys.stdout.write(f'{row}\n')
             queue.task_done()
 
 
