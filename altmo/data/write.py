@@ -3,8 +3,8 @@ from typing import List, Tuple, Union, Dict, Generator
 
 from psycopg2.extras import execute_values
 
+from altmo.data.utils import execute_values as execute_values_async
 from altmo.settings import TABLES
-from altmo.data.extras import execute_values as execute_values_async
 
 
 def create_study_area(cursor, data: dict, srs_id: Union[int, str]) -> None:

@@ -1,5 +1,6 @@
 import json
-from typing import List, Dict
+from itertools import islice
+from typing import List, Dict, Iterable
 
 from .errors import AltmoConfigError, CONFIG_ERROR_MSG
 
@@ -138,3 +139,12 @@ def get_available_amenity_categories(config_data: Dict[str, Dict]) -> tuple:
         return tuple([cat for cat in config_data["categories"].keys()])
     except KeyError:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
+
+
+def grouper(iterable: Iterable, size: int) -> Iterable:
+    """
+    >>> list(grouper(3, 'ABCDEFG'))
+    [['A', 'B', 'C'], ['D', 'E', 'F'], ['G']]
+    """
+    iterable = iter(iterable)
+    return iter(lambda: list(islice(iterable, size)), [])

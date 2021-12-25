@@ -49,32 +49,54 @@ def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
 
 
 def get_residence_amenity_straight_distance(
-    cursor, residence_id: int, category: str = None, name: str = None
+    cursor, study_area_id: int, /, *,
+    start: int = 0, limit: int = 1000, srs_id: int = 4326,
+    category: str = None, name: str = None
 ) -> List[Tuple]:
+    params = {
+        'study_area_id': study_area_id,
+        'srs_id': srs_id,
+        'start': start,
+        'limit': limit,
+    }
+
+    extra_where_sql = ''
+    if category is not None:
+        extra_where_sql += " AND am.category = %(category)s"
+        params['category'] = category
+
+    if name is not None:
+        extra_where_sql += " AND am.name = %(name)s"
+        params['name'] = name
+
     sql = f"""
     SELECT
-        amenity_id, ST_X(ST_Transform(am.geom, 4326)), ST_Y(ST_Transform(am.geom, 4326))
+        residence_id,
+        amenity_id, 
+        ST_Y(ST_Transform(r.geom, %(srs_id)s)) as residence_lat,
+        ST_X(ST_Transform(r.geom, %(srs_id)s)) as residence_lng,
+        ST_Y(ST_Transform(am.geom, %(srs_id)s)) as amenity_lat,
+        ST_X(ST_Transform(am.geom, %(srs_id)s)) as amenity_lng
     FROM
         {TABLES.RES_AMENITY_DIST_STR_TBL}
     JOIN
         {TABLES.AMENITIES_TBL} am
     ON
         amenity_id = am.id
+    JOIN
+        {TABLES.RESIDENCES_TBL} r
+    ON
+        residence_id = r.id
     WHERE
-        residence_id = %s
+        r.study_area_id = %(study_area_id)s
+    {extra_where_sql}
+    ORDER BY
+        r.id
+    OFFSET %(start)s
+    LIMIT %(limit)s
     """
-    params = (residence_id,)
-
-    if category is not None:
-        sql += " AND am.category = %s"
-        params += (category,)
-
-    if name is not None:
-        sql += " AND am.name = %s"
-        params += (name,)
 
     cursor.execute(sql, params)
-
     return cursor.fetchall()
 
 
@@ -85,10 +107,6 @@ def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) ->
         count(*)
     FROM
         {TABLES.RES_AMENITY_DIST_STR_TBL}
-    JOIN
-        {TABLES.AMENITIES_TBL} am
-    ON
-        amenity_id = am.id
     JOIN
         {TABLES.RESIDENCES_TBL} r
     ON
@@ -105,10 +123,16 @@ def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) ->
 
 
 async def get_residence_amenity_straight_distance_async(
-    cursor, study_area_id: int, start: int = 0, limit: int = 1000, srs_id: int = 4326,
+    cursor, study_area_id: int, /, *,
+    start: int = 0, limit: int = 1000, srs_id: int = 4326,
     category: str = None, name: str = None
 ) -> List[Tuple]:
-    params = (srs_id, srs_id, srs_id, srs_id, study_area_id, start, limit)
+    params = {
+        'study_area_id': study_area_id,
+        'srs_id': srs_id,
+        'start': start,
+        'limit': limit,
+    }
 
     extra_where_sql = ''
     if category is not None:
@@ -123,10 +147,10 @@ async def get_residence_amenity_straight_distance_async(
     SELECT
         residence_id,
         amenity_id, 
-        ST_Y(ST_Transform(r.geom, %s)) as residence_lat,
-        ST_X(ST_Transform(r.geom, %s)) as residence_lng,
-        ST_Y(ST_Transform(am.geom, %s)) as amenity_lat,
-        ST_X(ST_Transform(am.geom, %s)) as amenity_lng
+        ST_Y(ST_Transform(r.geom, %(srs_id)s)) as residence_lat,
+        ST_X(ST_Transform(r.geom, %(srs_id)s)) as residence_lng,
+        ST_Y(ST_Transform(am.geom, %(srs_id)s)) as amenity_lat,
+        ST_X(ST_Transform(am.geom, %(srs_id)s)) as amenity_lng
     FROM
         {TABLES.RES_AMENITY_DIST_STR_TBL}
     JOIN
@@ -138,12 +162,12 @@ async def get_residence_amenity_straight_distance_async(
     ON
         residence_id = r.id
     WHERE
-        r.study_area_id = %s
+        r.study_area_id = %(study_area_id)s
     {extra_where_sql}
     ORDER BY
         r.id
-    OFFSET %s
-    LIMIT %s
+    OFFSET %(start)s
+    LIMIT %(limit)s
     """
 
     await cursor.execute(sql, params)

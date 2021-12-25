@@ -28,17 +28,3 @@ def validate_study_area(cursor, _, __, value) -> int:
         raise click.BadParameter(f'Study area "{value}" not found.')
 
     return study_area_id
-
-
-PARALLEL_LOW = 'low'
-PARALLEL_HIGH = 'high'
-
-
-def validate_parallel(_, __, value) -> str:
-    """validates parallel parameter"""
-    available_choices = {PARALLEL_LOW, PARALLEL_HIGH}
-
-    if value not in available_choices:
-        raise click.BadParameter(f'value for -p|--parallel option must be one of {",".join(available_choices)}')
-
-    return value

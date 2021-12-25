@@ -138,3 +138,11 @@ def get_config(func):
     def wrapper(*args, **kwargs):
         return func(_CONFIG, *args, **kwargs)
     return wrapper
+
+
+def get_config_method(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        self, *_args = args
+        return func(self, _CONFIG, *_args, **kwargs)
+    return wrapper

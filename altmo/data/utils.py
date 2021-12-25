@@ -1,4 +1,5 @@
 import re as _re
+from typing import Callable, Generator
 
 from psycopg2 import extensions as _ext
 
@@ -141,3 +142,13 @@ def _paginate(seq, page_size):
             if page:
                 yield page
             return
+
+
+def page_query(func: Callable, count: int, batch_size: int, *args, **kwargs) -> Generator:
+    """
+    This function is used to iterate over potentially very large query result sets.
+    `func` should defined kwargs `start` and `limit` and these kwargs should limit the query result accordingly
+    """
+    for batch_start in range(0, count, batch_size):
+        kwargs |= {'start': batch_start, 'limit': batch_size}
+        yield func(*args, **kwargs)

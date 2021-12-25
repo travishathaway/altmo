@@ -1,7 +1,10 @@
 import contextlib
 from functools import wraps
 
+import aiopg
+
 import psycopg2
+from psycopg2.extras import NamedTupleCursor
 
 from altmo.settings import get_config
 
@@ -19,7 +22,7 @@ def psycopg2_cur(config):
             connection = psycopg2.connect(config.PG_DSN)
 
             try:
-                cursor = connection.cursor()
+                cursor = connection.cursor(cursor_factory=NamedTupleCursor)
                 # Call function passing in cursor
                 return_val = f(cursor, *args, **kwargs)
             finally:
@@ -47,3 +50,25 @@ def psycopg_context(conn_info):
         # Close connection
         connection.commit()
         connection.close()
+
+
+def async_postgres_pool(func):
+    """Decorates aiopg's context manager"""
+    @wraps(func)
+    @get_config
+    async def wrapper(config, *args, **kwargs):
+        async with aiopg.create_pool(config.PG_DSN) as pool:
+            return await func(pool, *args, **kwargs)
+    return wrapper
+
+
+def async_postgres_cursor_method(func):
+    """Decorates class methods with aiopg's context manager"""
+    @wraps(func)
+    @async_postgres_pool
+    async def wrapper(pool, *args, **kwargs):
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                self, *_args = args
+                return await func(self, cursor, *_args, **kwargs)
+    return wrapper
