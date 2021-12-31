@@ -5,7 +5,8 @@ import abc
 import asyncio
 import logging
 import sys
-from collections import defaultdict, Sequence
+from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Callable
 
@@ -38,9 +39,23 @@ class ReaderBatch(abc.ABC, Sequence):
     """
     Creates jobs which read data from various sources
     """
+    _producers: list[asyncio.Task]
+
     @abc.abstractmethod
     def register(self, queue: asyncio.Queue) -> None:
         ...
+
+    def __getitem__(self, item):
+        """
+        Makes this item behave like a list, using self._producers as a its underlying list
+        """
+        return self._producers[item]
+
+    def __len__(self):
+        """
+        Retrieve the length of the
+        """
+        return len(self._producers)
 
 
 class WriterBatch(abc.ABC):
@@ -109,18 +124,6 @@ class ValhallaReaderBatch(ReaderBatch):
         self.config = config
         self._producers = []
 
-    def __getitem__(self, item):
-        """
-        Makes this item behave like a list, using self._producers as a its underlying list
-        """
-        return self._producers[item]
-
-    def __len__(self):
-        """
-        Retrieve the length of the
-        """
-        return len(self._producers)
-
     def register(self, queue: asyncio.Queue) -> None:
         """
         Sets the producers attribute using the provided queue object
@@ -150,10 +153,10 @@ class ValhallaReaderBatch(ReaderBatch):
         Task to retrieve data from Valhalla API using its `sources_to_targets` endpoint
         """
         json_data = get_matrix_request(residence, amenities, costing=self.config.costing)
-        data = [
+        data = (
             StraightDistanceRow(residence.id, amenity.id, residence.lat, residence.lng, amenity.lat, amenity.lng)
             for amenity in amenities
-        ]
+        )
         resp = None
 
         try:

@@ -85,9 +85,17 @@ def network_distances(cur: psycopg2_cursor, study_area, mode, category, name, ou
     This means csv files will be written with a number prefix like, "1-out.csv", "2-out.csv", etc.
     """
     result_set = StraightDistanceResultSetContainer(
-        cur, study_area_id=study_area, batch_size=500_000,
+        cur,
+        study_area_id=study_area,
+        batch_size=500_000,
         query_kwargs={'category': category, 'name': name}
     )
-    config = BatchConfig(costing=mode, out=out, file_name=file_name)
+
+    config = BatchConfig(
+        costing=mode,
+        out=out,
+        file_name=file_name
+    )
+
     main_runner = BATCH_WRITERS_FUNCS[config.out]
     asyncio.run(main_runner(result_set, config))

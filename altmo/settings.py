@@ -12,17 +12,8 @@ MODE_PEDESTRIAN = "pedestrian"
 MODE_BICYCLE = "bicycle"
 
 
-class SingletonType(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(SingletonType, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
 @dataclass
-class Config(metaclass=SingletonType):
+class Config:
     """Holds configuration which is loaded from config file"""
     TBL_PREFIX: str = None
     SRS_ID: int = None
@@ -58,7 +49,7 @@ class Config(metaclass=SingletonType):
 _CONFIG = Config()
 
 
-class TableNames(metaclass=SingletonType):
+class TableNames:
     """
     Holds the table names and lazy loads the config object (it waits until a property is read)
     """

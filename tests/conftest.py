@@ -42,3 +42,15 @@ def mock_db(mocker) -> mock.MagicMock:
     )
 
     return mock_connect
+
+
+@pytest.fixture()
+def mock_cur_study_area(mock_db):
+    """
+    Sets up a study area as a mock on our mock_db fixture
+    """
+    mock_con = mock_db.return_value
+    mock_cur = mock_con.cursor.return_value
+    mock_cur.fetchone.return_value = (1, 'new_york', 'New York study area')
+
+    return mock_cur

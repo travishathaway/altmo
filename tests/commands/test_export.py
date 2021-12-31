@@ -21,13 +21,10 @@ def mock_register_hstore(mocker):
     return mock_obj
 
 
-def test_type_all_happy_path(mock_db):
+def test_type_all_happy_path(mock_cur_study_area):
     """Test successful run of export"""
     # Set up mocks
-    mock_con = mock_db.return_value
-    mock_cur = mock_con.cursor.return_value
-    mock_cur.fetchone.return_value = (1, 'new_york', 'New York study area')
-    mock_cur.fetchall.side_effect = [
+    mock_cur_study_area.fetchall.side_effect = [
         AMENITY_CATEGORY_PAIRS,
         get_residence_composite_average_times()
     ]
@@ -44,13 +41,10 @@ def test_type_all_happy_path(mock_db):
     assert len(out['features']) == 10
 
 
-def test_type_all_with_properties(mock_db):
+def test_type_all_with_properties(mock_cur_study_area):
     """Test successful run of export"""
     # Set up mocks
-    mock_con = mock_db.return_value
-    mock_cur = mock_con.cursor.return_value
-    mock_cur.fetchone.return_value = (1, 'new_york', 'New York study area')
-    mock_cur.fetchall.side_effect = [
+    mock_cur_study_area.fetchall.side_effect = [
         AMENITY_CATEGORY_PAIRS,
         get_residence_composite_average_times()
     ]
@@ -70,13 +64,10 @@ def test_type_all_with_properties(mock_db):
     assert sorted(list(out['features'][0]['properties'].keys())) == properties
 
 
-def test_type_all_with_bad_properties(mock_db):
+def test_type_all_with_bad_properties(mock_cur_study_area):
     """Test successful run of export"""
     # Set up mocks
-    mock_con = mock_db.return_value
-    mock_cur = mock_con.cursor.return_value
-    mock_cur.fetchone.return_value = (1, 'new_york', 'New York study area')
-    mock_cur.fetchall.side_effect = [
+    mock_cur_study_area.fetchall.side_effect = [
         AMENITY_CATEGORY_PAIRS,
         get_residence_composite_average_times()
     ]
@@ -90,13 +81,10 @@ def test_type_all_with_bad_properties(mock_db):
     assert f'"{bad_prop}" is not available. Choices are' in result.output
 
 
-def test_type_single_residence_happy_path(mock_db, mock_register_hstore):
+def test_type_single_residence_happy_path(mock_cur_study_area, mock_register_hstore):
     """Test a run of the single_residence type without any errors"""
     # Set up mocks
-    mock_con = mock_db.return_value
-    mock_cur = mock_con.cursor.return_value
-    mock_cur.fetchone.return_value = (1, 'new_york', 'New York study area')
-    mock_cur.fetchall.side_effect = [
+    mock_cur_study_area.fetchall.side_effect = [
         AMENITY_CATEGORY_PAIRS,
         get_residence_composite_average_times()
     ]
@@ -115,13 +103,10 @@ def test_type_single_residence_happy_path(mock_db, mock_register_hstore):
         assert len(exported_files) == 10
 
 
-def test_type_single_residence_export_dir_exists_error(mock_db):
-    """Test a run of the single_residence type without any errors"""
-    # Set up mocks
-    mock_con = mock_db.return_value
-    mock_cur = mock_con.cursor.return_value
-    mock_cur.fetchone.return_value = (1, 'new_york', 'New York study area')
-
+def test_type_single_residence_export_dir_exists_error(mock_cur_study_area):
+    """
+    Test a run of the single_residence type without any errors
+    """
     runner = CliRunner()
     with runner.isolated_filesystem():
         os.mkdir('export')
@@ -135,14 +120,15 @@ def test_type_single_residence_export_dir_exists_error(mock_db):
 
 
 def test_study_area_not_found(mock_db):
-    """Test successful run of export"""
+    """Test the case where no study area is found"""
     # Set up mocks
     mock_con = mock_db.return_value
     mock_cur = mock_con.cursor.return_value
     mock_cur.fetchone.return_value = None
 
     runner = CliRunner()
-    result = runner.invoke(export, ['new_york', EXPORT_TYPE_ALL])
+    study_area = 'new_york'
+    result = runner.invoke(export, [study_area, EXPORT_TYPE_ALL])
 
-    assert result.exit_code == 1
-    assert result.output == 'study area not found\n'
+    assert result.exit_code == 2
+    assert f'Study area "{study_area}" not found.' in result.output
