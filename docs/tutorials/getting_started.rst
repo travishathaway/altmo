@@ -1,5 +1,5 @@
-AltMo Basic Tutorial
-====================
+AltMo Tutorial
+==============
 
 Summary
 -------

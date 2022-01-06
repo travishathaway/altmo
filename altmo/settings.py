@@ -10,6 +10,7 @@ import yaml.parser
 DEFAULT_CONFIG_FILE_NAME = "altmo-config.yml"
 MODE_PEDESTRIAN = "pedestrian"
 MODE_BICYCLE = "bicycle"
+MODE_AUTO = "auto"
 
 
 @dataclass
