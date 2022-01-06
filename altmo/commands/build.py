@@ -23,13 +23,15 @@ def build(config, cursor, study_area):
     study_area_id, *_ = get_study_area(cursor, study_area)
     amenities = get_amenities_from_config(config.AMENITIES)
     amenity_category_map = get_amenity_category_map(config.AMENITIES)
+    nature_amenities = tuple(config.AMENITIES.get('categories', {}).get('nature', {}).keys())
 
     if study_area_id:
         # Add amenity data
         delete_amenities(cursor, study_area_id)
         add_amenities(cursor, study_area_id, amenities)
         add_amenities_category(cursor, study_area_id, amenity_category_map)
-        add_natural_amenities(cursor, study_area_id)
+        if nature_amenities:
+            add_natural_amenities(cursor, study_area_id, nature_amenities)
 
         # Add residence data
         delete_residences(cursor, study_area_id)

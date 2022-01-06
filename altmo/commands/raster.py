@@ -1,19 +1,19 @@
+import json
 import sys
 from typing import List, Tuple
-import json
 
 import click
 from osgeo import gdal
 
-from altmo.settings import MODE_PEDESTRIAN, get_config
 from altmo.data.decorators import psycopg2_cur
 from altmo.data.read import get_study_area, get_residence_composite_average_times
+from altmo.settings import MODE_PEDESTRIAN, get_config
 from altmo.utils import (
     get_available_amenity_categories,
     get_residence_composite_as_geojson,
-    get_amenity_categories,
-    validate_mode,
+    get_amenity_categories
 )
+from altmo.validators import validate_mode
 
 
 @click.command("raster")

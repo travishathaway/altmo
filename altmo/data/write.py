@@ -92,7 +92,7 @@ def add_amenities(cursor, study_area_id: int, amenities: List[str]) -> None:
     cursor.execute(sql, (study_area_id,))
 
 
-def add_natural_amenities(cursor, study_area_id: int) -> None:
+def add_natural_amenities(cursor, study_area_id: int, include: tuple) -> None:
     """
     Runs special queries that add natural amenities for a study area.
 
@@ -136,15 +136,19 @@ def add_natural_amenities(cursor, study_area_id: int) -> None:
 
     # group the rows into "nature" categories
     for geom, landuse, leisure, natural in cursor.fetchall():
-        if landuse == "allotments":
+        if landuse == "allotments" and "allotment" in include:
             records.append((geom, "nature", "allotment", study_area_id))
-        elif landuse == "cemetery":
+
+        elif landuse == "cemetery" and "cemetery" in include:
             records.append((geom, "nature", "cemetery", study_area_id))
-        elif leisure == "pitch" or landuse == "recreation_ground":
+
+        elif (leisure == "pitch" or landuse == "recreation_ground") and "sports" in include:
             records.append((geom, "nature", "sports", study_area_id))
-        elif landuse == "forest" or natural == "wood" or landuse == "greenfield":
+
+        elif (landuse == "forest" or natural == "wood" or landuse == "greenfield") and "forest" in include:
             records.append((geom, "nature", "forest", study_area_id))
-        elif leisure == "park" or leisure == "playground":
+
+        elif (leisure == "park" or leisure == "playground") and "park" in include:
             records.append((geom, "nature", "park", study_area_id))
 
     insert_sql = f"""

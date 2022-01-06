@@ -110,10 +110,14 @@ def get_config_file(config_file_name) -> str:
     Retrieves the filename used to store data.
 
     If the environment variable TRKR_DB_FILE is defined, we use this.
-    If not, we use the default location ($HOME_DIR/.altmo-config.yml)
+    If not, we use check the current directory before using the default
+    location ($HOME_DIR/.altmo-config.yml)
     """
     if os.getenv("ALTMO_CONFIG_FILE"):
         return os.getenv("ALTMO_CONFIG_FILE")
+
+    if os.path.exists(DEFAULT_CONFIG_FILE_NAME):
+        return DEFAULT_CONFIG_FILE_NAME
     else:
         home_dir = os.path.expanduser("~")
         return os.path.join(home_dir, f".{config_file_name}")

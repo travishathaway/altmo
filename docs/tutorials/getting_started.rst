@@ -1,5 +1,5 @@
-AltMo Tutorial
-==============
+Getting Started
+===============
 
 Summary
 -------
