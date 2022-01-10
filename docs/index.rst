@@ -11,7 +11,8 @@ Welcome to AltMo
 distances between residences and amenities within a city. For a full overview
 of how to do this and set up the necessary dependencies,
 `head to the extensive getting started tutorial <tutorials/getting_started.html>`_.
-You can find a full reference for each command in the tool set below in the "Commmand Overview" section.
+You can find a full reference for each command in the tool set below in the
+:ref:`Command Overview <Command Overview>` section.
 
 Background
 ----------
@@ -20,9 +21,8 @@ This tool set runs on top of PostgreSQL/PostGIS, Valhalla Routing Engine and Ope
 It was originally used for creating walkability indices, but could potentially be extended
 to do more. Essentially, this tool collects all the residences in a
 city and then calculates the network routes to the provided amenities (these can be
-configure via a config file). To get information about residences and amenities,
-OSM data is used. To calculate the route distances and durations using a costing,
-or transportation mode, parameter, the routing engine Valhalla is used.
+configured via a config file). OpenStreetMap provides the data on the amenities and
+residences, while Valhalla provided the routing engine to calculate distances and times.
 
 
 Command Overview
@@ -33,7 +33,7 @@ Below is an overview of each command:
 schema
 ######
 
-This command is used to install or remove the database schema from you configured database.
+This command is used to install or remove the database schema from your configured database.
 
 Example usage:
 
@@ -100,9 +100,13 @@ Example usage:
 
 .. code:: bash
 
-    # This will calculate network distances using bicycle as a
+    # This will calculate network distances using "bicycle" as a
     # costing parameter in Valhalla and save it to our database.
     $ altmo network study_area_name --mode bicycle
+
+    # This will calculate network distances using "pedestrian" as a
+    # costing parameter in Valhalla and save it to a CSV file.
+    $ altmo network study_area_name --mode pedestrian --out csv --file-name out.csv
 
 export
 ######
