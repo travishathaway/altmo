@@ -1,11 +1,12 @@
+import asyncio
 import sys
 
 import click
-from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 
-from altmo.data.read import get_study_area, get_amenity_name_category
-from altmo.data.write import add_amenity_residence_distances_straight
 from altmo.data.decorators import psycopg2_cur
+from altmo.data.read import get_study_area, get_amenity_name_category
+from altmo.data.write import add_amenity_residence_distances_straight_async
 
 
 @click.command("straight")
@@ -13,10 +14,16 @@ from altmo.data.decorators import psycopg2_cur
 @click.option("-c", "--category", type=str)
 @click.option("-n", "--name", type=str)
 @click.option("-s", "--show-status", is_flag=True)
+@click.option("-p", "--parallel", type=int, default=1)
 @psycopg2_cur()
-def straight_distance(cursor, study_area, category, name, show_status):
+def straight_distance(cursor, study_area, category, name, show_status, parallel):
     """
-    Calculates the straight line distance from a residence to the nearest amenity
+    Calculates the straight line distance from a residence to the nearest amenity.
+
+    Use `--parallel|-p` to increase the number of concurrent queries being run against
+    the database (default value is `1`).
+
+    Cancelling this command (e.g. with Ctrl-C) will not cancel the current running queries.
     """
     study_area_id, *_ = get_study_area(cursor, study_area)
     if not study_area_id:
@@ -27,11 +34,23 @@ def straight_distance(cursor, study_area, category, name, show_status):
     amenities = get_amenity_name_category(
         cursor, study_area_id, category=category, name=name
     )
-    records = add_amenity_residence_distances_straight(cursor, study_area_id, amenities)
 
-    if show_status:
-        total = len(amenities)
-        records = tqdm(records, unit="amenity", total=total)
+    # This limits the number of running queries, defaults to `1`
+    sem = asyncio.Semaphore(parallel)
 
-    # Runs the code inside of the generator we received
-    tuple(records)
+    async def main():
+        async def task(co):
+            async with sem:
+                await co
+
+        tasks = tuple(
+            task(add_amenity_residence_distances_straight_async(study_area_id, amty, cat))
+            for amty, cat in amenities
+        )
+
+        if show_status:
+            await tqdm_asyncio.gather(*tasks, unit="amenity")
+        else:
+            await asyncio.gather(*tasks)
+
+    asyncio.run(main())

@@ -3,6 +3,7 @@ from typing import List, Tuple, Union, Dict, Generator
 
 from psycopg2.extras import execute_values
 
+from altmo.data.decorators import async_postgres_cursor
 from altmo.data.utils import execute_values as execute_values_async
 from altmo.settings import TABLES
 
@@ -234,7 +235,7 @@ def _get_amenity_residence_distance_straight_top_three_sql() -> str:
 
 
 def add_amenity_residence_distances_straight(
-    cursor, study_area_id: int, amenities: list
+        cursor, study_area_id: int, amenities: list
 ) -> Generator:
     """
     Finds the straight line distance amenity and residences.
@@ -243,6 +244,14 @@ def add_amenity_residence_distances_straight(
     for amenity, category in amenities:
         sql = _get_amenity_residence_distance_straight_top_three_sql()
         yield cursor.execute(sql, (amenity, category, study_area_id, study_area_id))
+
+
+@async_postgres_cursor
+async def add_amenity_residence_distances_straight_async(
+        cursor, study_area_id: int, amenity: str, category: str
+) -> None:
+    sql = _get_amenity_residence_distance_straight_top_three_sql()
+    await cursor.execute(sql, (amenity, category, study_area_id, study_area_id))
 
 
 def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
