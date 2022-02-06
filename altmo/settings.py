@@ -37,7 +37,7 @@ class Config:
             )
             sys.exit(1)
 
-        [setattr(self, key, val) for key, val in config_file_data.items()]
+        tuple(setattr(self, key, val) for key, val in config_file_data.items())
 
     def __getattribute__(self, attr: str):
         if attr.isupper():

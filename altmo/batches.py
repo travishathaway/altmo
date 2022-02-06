@@ -62,18 +62,14 @@ class WriterBatch(abc.ABC):
     """
     Base writer class
     """
-    consumers: list[asyncio.Task]
-
     @abc.abstractmethod
     async def consume(self, queue: asyncio.Queue) -> None:
         ...
 
-    def register(self, queue: asyncio.Queue, num_consumers: int = 10) -> None:
+    def register(self, queue: asyncio.Queue) -> None:
         """
         Sets the consumers property by registering however many consumers were specified in `batch_size`
         """
-        self.consumers = []
-
         def _handle_result(task_: asyncio.Task) -> None:
             try:
                 task_.result()
@@ -82,10 +78,8 @@ class WriterBatch(abc.ABC):
             except Exception as exc:
                 raise exc
 
-        for _ in range(num_consumers):
-            task = asyncio.create_task(self.consume(queue))
-            task.add_done_callback(_handle_result)
-            self.consumers.append(task)
+        task = asyncio.create_task(self.consume(queue))
+        task.add_done_callback(_handle_result)
 
 
 def batch_manager(reader: ReaderBatch, writer: WriterBatch) -> Callable:
@@ -102,8 +96,13 @@ def batch_manager(reader: ReaderBatch, writer: WriterBatch) -> Callable:
         await asyncio.gather(*reader)
         await queue.join()
 
-        for con in writer.consumers:
-            con.cancel()
+        # Cancel all remaining tasks
+        tasks = [
+            t for t in asyncio.all_tasks()
+            if t is not asyncio.current_task()
+        ]
+
+        tuple(t.cancel() for t in tasks)
 
     return run
 
@@ -133,9 +132,9 @@ class ValhallaReaderBatch(ReaderBatch):
             for idx, amt_batch in enumerate(grouper(amenities, size=self.VALHALLA_BATCH_LIMIT), start=1):
                 task = asyncio.create_task(self.produce(queue, residence, amt_batch))
                 self._producers.append(task)
-                logging.info(f'Adding Task {idx} for {residence}')
+                logger.info(f'Adding Task {idx} for {residence}')
 
-    def _group_data_by_residence(self) -> dict:
+    def _group_data_by_residence(self) -> dict[Point, list[Point]]:
         """
         Groups the `self.data` attribute by residence(id, lat, lng)
         """
@@ -239,13 +238,11 @@ class DBWriterBatch(WriterBatch):
                     http_data['distance'], http_data['time'], db_data.amenity_id,
                     db_data.residence_id, self.config.costing
                 )
-                logging.info(f'Record to be written: {row}')
+                logger.info(f'Record to be written: {row}')
                 new_records.append(row)
 
             await self._insert_records(new_records)
             queue.task_done()
-
-            logging.info(f'Added {len(new_records)} new records')
 
     @async_postgres_cursor_method
     async def _insert_records(self, cur, new_records):
@@ -254,5 +251,6 @@ class DBWriterBatch(WriterBatch):
         """
         try:
             await add_amenity_residence_distance_async(cur, new_records)
+            logger.info(f'Added {len(new_records)} new records')
         except UniqueViolation as exc:
-            sys.stderr.write(f'{str(exc)}\n')
+            logger.error(f'{str(exc)}\n')

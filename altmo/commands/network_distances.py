@@ -1,10 +1,11 @@
 import asyncio
+import logging
 
 import aiofiles
 import click
 from psycopg2.extensions import cursor as psycopg2_cursor
 
-from altmo.api.valhalla import  async_http_client, ValhallaAsyncClient
+from altmo.api.valhalla import async_http_client, ValhallaAsyncClient
 from altmo.batches import (
     ValhallaReaderBatch,
     DBWriterBatch,
@@ -20,7 +21,6 @@ from altmo.validators import (
     validate_study_area, validate_mode, validate_out,
     OUT_DB, OUT_CSV, OUT_STDOUT
 )
-
 
 BATCH_WRITERS_CLS = {
     OUT_DB: DBWriterBatch,
@@ -74,8 +74,10 @@ BATCH_WRITERS_FUNCS = {
 @click.option("-n", "--name", type=str)
 @click.option("-o", "--out", type=click.UNPROCESSED, default=OUT_DB, callback=validate_out)
 @click.option("-f", "--file-name", type=str, default="out.csv")
+@click.option("-s", "--sample", type=int, default=None)
+@click.option("-v", "--verbose", type=bool, is_flag=True)
 @psycopg2_cur()
-def network_distances(cur: psycopg2_cursor, study_area, mode, category, name, out, file_name):
+def network_distances(cur: psycopg2_cursor, study_area, mode, category, name, out, file_name, sample, verbose):
     """
     Calculate network distances between residences and amenities.
 
@@ -83,12 +85,17 @@ def network_distances(cur: psycopg2_cursor, study_area, mode, category, name, ou
 
     When called with --out=csv it will write a CSV file for every 500,000 rows it processes.
     This means csv files will be written with a number prefix like, "1-out.csv", "2-out.csv", etc.
+
+    Default value for `--out` is `db` which writes to the configured database.
     """
+    if verbose:
+        logging.basicConfig(level=logging.INFO)
+
     result_set = StraightDistanceResultSetContainer(
         cur,
         study_area_id=study_area,
         batch_size=500_000,
-        query_kwargs={'category': category, 'name': name}
+        query_kwargs={'category': category, 'name': name, 'sample': sample}
     )
 
     config = BatchConfig(

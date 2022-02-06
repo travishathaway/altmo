@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict
 
-from altmo.utils import get_category_amenity_keys
 from altmo.settings import TABLES
+from altmo.utils import get_category_amenity_keys
 
 
 def get_study_area(cursor, name) -> tuple:
@@ -49,10 +49,30 @@ def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
 
 
 def get_residence_amenity_straight_distance(
-    cursor, study_area_id: int, /, *,
-    start: int = 0, limit: int = 1000, srs_id: int = 4326,
-    category: str = None, name: str = None
+        cursor,
+        study_area_id: int, /, *,
+        start: int = 0,
+        limit: int = 1000,
+        srs_id: int = 4326,
+        category: str = None,
+        name: str = None,
+        sample: int = None
 ) -> List[Tuple]:
+    """
+    Used to retrieve a subset of `*_residence_amenity_distances_straight` records.
+    These records are used to calculate the network distances.
+
+    :param cursor:
+    :param study_area_id: unique identify for study area
+    :param start: begin offset here
+    :param limit: limit offset to this value
+    :param srs_id: e.g. 4326 or 3857
+    :param category: amenity category to filter by
+    :param name: amenity name to filter by
+    :param sample: only grab every nth element; useful for reducing calculations needed.
+
+    :return: result set from the database cursor.
+    """
     params = {
         'study_area_id': study_area_id,
         'srs_id': srs_id,
@@ -68,6 +88,10 @@ def get_residence_amenity_straight_distance(
     if name is not None:
         extra_where_sql += " AND am.name = %(name)s"
         params['name'] = name
+
+    if sample is not None:
+        extra_where_sql += " AND residence_id %% %(sample)s = 0"
+        params['sample'] = sample
 
     sql = f"""
     SELECT
@@ -101,7 +125,9 @@ def get_residence_amenity_straight_distance(
 
 
 def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) -> int:
-    """Gets the count of the current number of records in the straight distances table for a study_area_id"""
+    """
+    Gets the count of the current number of records in the straight distances table for a study_area_id
+    """
     sql = f"""
     SELECT
         count(*)
@@ -188,7 +214,7 @@ def _get_residence_composite_average_times_sql(
 
     This function builds a rather complex SQL query (using the `crosstab` function).
 
-    Admittedly it is a bit messy. One thing to watch out for is the `sub_sql` string
+    Admittedly, this is a bit messy. One thing to watch out for is the `sub_sql` string
     which has to be escaped because it is being passed to the `crosstab` function.
 
     VULNERABLE TO SQL INJECTION !!! (Never use this function with untrusted inputs!!!)
