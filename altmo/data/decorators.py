@@ -2,7 +2,6 @@ import contextlib
 from functools import wraps
 
 import aiopg
-
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
 
@@ -39,7 +38,6 @@ def psycopg2_cur(config):
 
 @contextlib.contextmanager
 def psycopg_context(conn_info):
-    """Context manager for PostgreSQL connections"""
     # Setup postgres connection
     connection = psycopg2.connect(conn_info)
 
@@ -53,17 +51,25 @@ def psycopg_context(conn_info):
 
 
 def async_postgres_pool(func):
-    """Decorates aiopg's context manager"""
     @wraps(func)
     @get_config
     async def wrapper(config, *args, **kwargs):
-        async with aiopg.create_pool(config.PG_DSN) as pool:
+        async with aiopg.create_pool(config.PG_DSN, timeout=600) as pool:
             return await func(pool, *args, **kwargs)
     return wrapper
 
 
+def async_postgres_cursor(func):
+    @wraps(func)
+    @async_postgres_pool
+    async def wrapper(pool, *args, **kwargs):
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                return await func(cursor, *args, **kwargs)
+    return wrapper
+
+
 def async_postgres_cursor_method(func):
-    """Decorates class methods with aiopg's context manager"""
     @wraps(func)
     @async_postgres_pool
     async def wrapper(pool, *args, **kwargs):
