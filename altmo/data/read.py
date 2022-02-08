@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from __future__ import annotations
 
 from altmo.settings import TABLES
 from altmo.utils import get_category_amenity_keys
@@ -16,7 +16,7 @@ def get_study_area(cursor, name) -> tuple:
 
 def get_amenity_name_category(
     cursor, study_area_id: int, category=None, name=None
-) -> List[tuple]:
+) -> list[tuple]:
     """return all the amenity category, amenity name pairs for a single study_area"""
     sql = (
         f"SELECT DISTINCT name, category FROM {TABLES.AMENITIES_TBL} WHERE study_area_id = %s"
@@ -35,7 +35,7 @@ def get_amenity_name_category(
     return cursor.fetchall()
 
 
-def get_study_area_residences(cursor, study_area_id: int) -> List[Tuple]:
+def get_study_area_residences(cursor, study_area_id: int) -> list[tuple]:
     """fetch all residences for a study area"""
     sql = f"""
         SELECT
@@ -57,7 +57,7 @@ def get_residence_amenity_straight_distance(
         category: str = None,
         name: str = None,
         sample: int = None
-) -> List[Tuple]:
+) -> list[tuple]:
     """
     Used to retrieve a subset of `*_residence_amenity_distances_straight` records.
     These records are used to calculate the network distances.
@@ -96,7 +96,7 @@ def get_residence_amenity_straight_distance(
     sql = f"""
     SELECT
         residence_id,
-        amenity_id, 
+        amenity_id,
         ST_Y(ST_Transform(r.geom, %(srs_id)s)) as residence_lat,
         ST_X(ST_Transform(r.geom, %(srs_id)s)) as residence_lng,
         ST_Y(ST_Transform(am.geom, %(srs_id)s)) as amenity_lat,
@@ -152,7 +152,7 @@ async def get_residence_amenity_straight_distance_async(
     cursor, study_area_id: int, /, *,
     start: int = 0, limit: int = 1000, srs_id: int = 4326,
     category: str = None, name: str = None
-) -> List[Tuple]:
+) -> list[tuple]:
     params = {
         'study_area_id': study_area_id,
         'srs_id': srs_id,
@@ -172,7 +172,7 @@ async def get_residence_amenity_straight_distance_async(
     sql = f"""
     SELECT
         residence_id,
-        amenity_id, 
+        amenity_id,
         ST_Y(ST_Transform(r.geom, %(srs_id)s)) as residence_lat,
         ST_X(ST_Transform(r.geom, %(srs_id)s)) as residence_lng,
         ST_Y(ST_Transform(am.geom, %(srs_id)s)) as amenity_lat,
@@ -204,11 +204,11 @@ async def get_residence_amenity_straight_distance_async(
 def _get_residence_composite_average_times_sql(
     study_area_id: int,
     mode: str,
-    weights: Dict[str, Dict],
-    amenities: List[tuple],
+    weights: dict[str, dict],
+    amenities: list[tuple],
     include_geojson=False,
     srs_id=3857,
-) -> Tuple[tuple, str]:
+) -> tuple[tuple, str]:
     """
     Retrieves a list of residences with their composite averages based on amenities config.
 
@@ -281,7 +281,7 @@ def _get_residence_composite_average_times_sql(
     pivot_columns_str = ", ".join(pivot_columns_with_type)
 
     def get_category_avg_stmts_str() -> str:
-        cat_avg_stmts: List[str] = []
+        cat_avg_stmts: list[str] = []
 
         for category, amts in weights.items():
             wght_stmts = []
@@ -337,10 +337,10 @@ def get_residence_composite_average_times(
     cursor,
     study_area_id: int,
     mode: str,
-    weights: Dict[str, Dict],
+    weights: dict[str, dict],
     include_geojson=False,
     srs_id=3857,
-) -> Tuple[tuple, List[tuple]]:
+) -> tuple[tuple, list[tuple]]:
     """
     Get the residence composites for each residence in a provided study area
 

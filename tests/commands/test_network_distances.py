@@ -1,4 +1,4 @@
-import os
+# import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -6,9 +6,8 @@ from click.testing import CliRunner
 
 from altmo.commands.network_distances import network_distances
 from altmo.validators import OUT_STDOUT, OUT_CSV
-
-from tests.fixtures.valhalla import VALHALLA_MATRIX_RESPONSE
 from tests.fixtures.straight_distance import STRAIGHT_DISTANCE
+from tests.fixtures.valhalla import VALHALLA_MATRIX_RESPONSE
 
 
 @pytest.fixture()
@@ -31,12 +30,12 @@ def test_happy_path_out_csv(mock_cur_straight_dist):
 
         runner = CliRunner()
 
-        # with runner.isolated_filesystem():
-        filename = 'test-out.csv'
-        result = runner.invoke(network_distances, ['new_york', '--out', OUT_CSV, '--file-name', filename])
+        with runner.isolated_filesystem():
+            filename = 'test-out.csv'
+            result = runner.invoke(network_distances, ['new_york', '--out', OUT_CSV, '--file-name', filename])
 
-        assert result.exit_code == 0
-        assert result.output == ''
+            assert result.exit_code == 0
+            assert result.output == ''
 
         # cur_dir = os.listdir('./')
         # for filename in cur_dir:

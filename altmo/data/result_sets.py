@@ -3,8 +3,8 @@ from typing import Callable, Generator
 
 from psycopg2.extensions import cursor
 
-from altmo.data.utils import page_query
 from altmo.data.read import get_residence_amenity_straight_distance_count, get_residence_amenity_straight_distance
+from altmo.data.utils import page_query
 
 
 class ResultSetContainer(abc.ABC):
@@ -21,10 +21,10 @@ class ResultSetContainer(abc.ABC):
 
     def __repr__(self):
         return (
-            f'<ResultSetContainer'
-            'study_area_id={self.study_area_id} '
-            'batch_size={self.batch_size} '
-            'query_kwargs={self.query_kwargs}>'
+            '<ResultSetContainer'
+            f'study_area_id={self.study_area_id} '
+            f'batch_size={self.batch_size} '
+            f'query_kwargs={self.query_kwargs}>'
         )
 
     @abc.abstractmethod

@@ -1,6 +1,8 @@
 """
 These are a series of "Batch" objects that are meant to be used in async workflows
 """
+from __future__ import annotations
+
 import abc
 import asyncio
 import logging

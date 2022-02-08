@@ -1,13 +1,15 @@
-import sys
-import os
+from __future__ import annotations
+
 import json
-from typing import List, Union
+import os
+import sys
+from typing import Union
 
 import click
 from psycopg2.extras import register_hstore
 
-from altmo.data.read import get_residence_composite_average_times
 from altmo.data.decorators import psycopg2_cur
+from altmo.data.read import get_residence_composite_average_times
 from altmo.settings import get_config, MODE_PEDESTRIAN, Config
 from altmo.utils import (
     get_residence_composite_as_geojson,
@@ -16,13 +18,12 @@ from altmo.utils import (
 )
 from altmo.validators import validate_mode, validate_study_area
 
-
 EXPORT_TYPE_ALL = "all"
 EXPORT_TYPE_SINGLE_RESIDENCE = "single_residence"
 
 
 @get_config
-def get_available_fields(config: Config):
+def get_available_fields(config: Config) -> tuple[str]:
     return ("all",) + get_available_amenity_categories(config.AMENITIES)
 
 
@@ -80,7 +81,7 @@ export_factory = {
 }
 
 
-def process_properties(_, __, value) -> List[str]:
+def process_properties(_, __, value) -> list[str]:
     """returns properties param as a list, parses from a comma separated string"""
     if value:
         value_list = [val.strip() for val in value.split(",")]

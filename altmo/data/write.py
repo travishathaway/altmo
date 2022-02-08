@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import List, Tuple, Union, Dict, Generator
+from typing import Union, Generator
 
 from psycopg2.extras import execute_values
 
@@ -32,7 +34,7 @@ def delete_amenities(cursor, study_area_id: int) -> None:
     cursor.execute(sql, (study_area_id,))
 
 
-def add_amenities(cursor, study_area_id: int, amenities: List[str]) -> None:
+def add_amenities(cursor, study_area_id: int, amenities: list[str]) -> None:
     """adds amenities to the amenities table without category"""
     amenities_sql_str = "','".join(amenities)
 
@@ -159,7 +161,7 @@ def add_natural_amenities(cursor, study_area_id: int, include: tuple) -> None:
 
 
 def add_amenities_category(
-    cursor, study_area_id: int, amenity_category_map: Dict[str, str]
+    cursor, study_area_id: int, amenity_category_map: dict[str, str]
 ) -> None:
     values = amenity_category_map.items()
     values_str = ",".join([f"('{name}', '{category}')" for name, category in values])
@@ -254,7 +256,7 @@ async def add_amenity_residence_distances_straight_async(
     await cursor.execute(sql, (amenity, category, study_area_id, study_area_id))
 
 
-def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
+def add_amenity_residence_distance(cursor, records: list[tuple]) -> None:
     """
     adds network residence amenity distances
 
@@ -269,7 +271,7 @@ def add_amenity_residence_distance(cursor, records: List[Tuple]) -> None:
     execute_values(cursor, sql, records, template=None, page_size=100)
 
 
-async def add_amenity_residence_distance_async(cursor, records: List[Tuple]) -> None:
+async def add_amenity_residence_distance_async(cursor, records: list[tuple]) -> None:
     """
     adds network residence amenity distances
 

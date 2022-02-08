@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import json
 import sys
-from typing import List, Tuple
 
 import click
 from osgeo import gdal
@@ -72,7 +73,7 @@ def raster(config, cursor, study_area, outfile, mode, field, resolution, srs_id)
     )
 
 
-def get_bounding_box(pts: List[Tuple]) -> List:
+def get_bounding_box(pts: list[tuple]) -> list:
     """
     Provided a geojson object return a flat list of points as list
     """

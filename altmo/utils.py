@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 import json
 from itertools import islice
-from typing import List, Dict, Iterable
+from typing import Iterable
 
 from .errors import AltmoConfigError, CONFIG_ERROR_MSG
 
 
-def get_amenities_from_config(config_data: Dict[str, Dict[str, Dict]]) -> List[str]:
+def get_amenities_from_config(config_data: dict[str, dict[str, dict]]) -> list[str]:
     """
     Retrieves the OSM amenities from our config_data object.
 
     We intentionally exclude "nature" as this category is handled specially.
     """
     try:
-        config_amenities: List[str] = []
+        config_amenities: list[str] = []
         amenity_config = config_data["categories"]
 
         for category, amenities in amenity_config.items():
@@ -24,7 +26,7 @@ def get_amenities_from_config(config_data: Dict[str, Dict[str, Dict]]) -> List[s
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
 
-def get_amenity_category_map(config_data: Dict[str, Dict]) -> Dict:
+def get_amenity_category_map(config_data: dict[str, dict]) -> dict:
     """returns a mapping we can use to look up a category for an amenity"""
     try:
         return {
@@ -36,7 +38,7 @@ def get_amenity_category_map(config_data: Dict[str, Dict]) -> Dict:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
 
-def get_category_amenity_keys(categories: Dict[str, Dict]) -> List[str]:
+def get_category_amenity_keys(categories: dict[str, dict]) -> list[str]:
     """
     Returns category and amenity combined together as a single str `{category}_{amenity}`
     """
@@ -51,8 +53,8 @@ def get_category_amenity_keys(categories: Dict[str, Dict]) -> List[str]:
 
 
 def get_amenity_category_weights(
-    config_data: Dict[str, Dict[str, Dict]]
-) -> Dict[str, float]:
+    config_data: dict[str, dict[str, dict]]
+) -> dict[str, float]:
     """
     Returns amenity category and amenity name combined together which can be used in a pivot table query
     """
@@ -67,7 +69,7 @@ def get_amenity_category_weights(
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
 
-def get_amenity_categories(config_data: Dict[str, Dict]) -> Dict[str, Dict]:
+def get_amenity_categories(config_data: dict[str, dict]) -> dict[str, dict]:
     """
     safely returns the configured amenities. If they are not there then a AltmoConfigError is thrown
     """
@@ -77,7 +79,7 @@ def get_amenity_categories(config_data: Dict[str, Dict]) -> Dict[str, Dict]:
         raise AltmoConfigError(CONFIG_ERROR_MSG)
 
 
-def get_residence_composite_as_dicts(cols: tuple, data: List[tuple]) -> List[Dict]:
+def get_residence_composite_as_dicts(cols: tuple, data: list[tuple]) -> list[dict]:
     """returns the residence composite results as a list of dictionaries"""
     ret_list = []
 
@@ -94,8 +96,8 @@ def get_residence_composite_as_dicts(cols: tuple, data: List[tuple]) -> List[Dic
 
 
 def get_residence_composite_as_geojson(
-    cols: tuple, data: List[tuple], props: tuple = None
-) -> Dict:
+    cols: tuple, data: list[tuple], props: tuple = None
+) -> dict:
     """
     Gets the residence composite results as geojson dict.
 
@@ -127,7 +129,7 @@ def get_residence_composite_as_geojson(
     return geojson_data
 
 
-def get_available_amenity_categories(config_data: Dict[str, Dict]) -> tuple:
+def get_available_amenity_categories(config_data: dict[str, dict]) -> tuple:
     """
     Reads the config_data dictionary and returns all currently available amenity categories
 

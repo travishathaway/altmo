@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from functools import wraps
 
 import aiohttp
 
-from altmo.settings import get_config_method, Config
 from altmo.data.types import Point
+from altmo.settings import get_config_method, Config
 
 
 def async_http_client(func):

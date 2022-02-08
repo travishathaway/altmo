@@ -1,13 +1,13 @@
-from typing import List
+from __future__ import annotations
 
 import click
 
-from altmo.settings import MODE_PEDESTRIAN, MODE_BICYCLE
 from altmo.data.decorators import psycopg2_cur
 from altmo.data.read import get_study_area
+from altmo.settings import MODE_PEDESTRIAN, MODE_BICYCLE
 
 
-def validate_mode(_, __, value) -> List[str]:
+def validate_mode(_, __, value) -> list[str]:
     """validates mode parameter"""
     if value:
         available_choices = (MODE_BICYCLE, MODE_PEDESTRIAN)
@@ -35,7 +35,7 @@ OUT_STDOUT = 'stdout'
 OUT_CSV = 'csv'
 
 
-def validate_out(_, __, value) -> List[str]:
+def validate_out(_, __, value) -> list[str]:
     """validates mode parameter"""
     if value:
         available_choices = (OUT_DB, OUT_CSV, OUT_STDOUT)
@@ -45,4 +45,3 @@ def validate_out(_, __, value) -> List[str]:
             )
 
         return value or None
-
