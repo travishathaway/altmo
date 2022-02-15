@@ -35,18 +35,15 @@ def straight_distance(cursor, study_area, category, name, show_status, parallel)
         cursor, study_area_id, category=category, name=name
     )
 
-    # This limits the number of running queries, defaults to `1`
-    sem = asyncio.Semaphore(parallel)
-
     async def main():
-        async def task(co):
-            async with sem:
-                await co
+        # This limits the number of running queries, defaults to `1`
+        sem = asyncio.Semaphore(parallel)
 
-        tasks = tuple(
-            task(add_amenity_residence_distances_straight_async(study_area_id, amty, cat))
-            for amty, cat in amenities
-        )
+        async def task(amty, cat):
+            async with sem:
+                await add_amenity_residence_distances_straight_async(study_area_id, amty, cat)
+
+        tasks = tuple(task(amty, cat) for amty, cat in amenities)
 
         if show_status:
             await tqdm_asyncio.gather(*tasks, unit="amenity")
