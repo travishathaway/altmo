@@ -3,7 +3,7 @@ from functools import wraps
 
 import aiopg
 import psycopg2
-from psycopg2.extras import NamedTupleCursor
+from psycopg2.extras import NamedTupleCursor, register_hstore as psycopg2_register_hstore
 
 from altmo.settings import get_config
 
@@ -77,4 +77,15 @@ def async_postgres_cursor_method(func):
             async with conn.cursor() as cursor:
                 self, *_args = args
                 return await func(self, cursor, *_args, **kwargs)
+    return wrapper
+
+
+def register_hstore(func):
+    """
+    Intended to decorate funcs which take the psycopg2 cursor object as a first argument.
+    """
+    @wraps(func)
+    def wrapper(cursor, *args, **kwargs):
+        psycopg2_register_hstore(cursor)
+        return func(cursor, *args, **kwargs)
     return wrapper

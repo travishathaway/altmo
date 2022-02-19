@@ -124,10 +124,32 @@ def get_residence_amenity_straight_distance(
     return cursor.fetchall()
 
 
-def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) -> int:
+def get_residence_amenity_straight_distance_count(
+        cursor, study_area_id: int,
+        sample: int = None,
+        category: str = None,
+        name: str = None,
+) -> int:
     """
     Gets the count of the current number of records in the straight distances table for a study_area_id
     """
+    params = {
+        'study_area_id': study_area_id
+    }
+    extra_where_sql = ''
+
+    if category is not None:
+        extra_where_sql += " AND am.category = %(category)s"
+        params['category'] = category
+
+    if name is not None:
+        extra_where_sql += " AND am.name = %(name)s"
+        params['name'] = name
+
+    if sample is not None:
+        extra_where_sql += " AND residence_id %% %(sample)s = 0"
+        params['sample'] = sample
+
     sql = f"""
     SELECT
         count(*)
@@ -138,9 +160,9 @@ def get_residence_amenity_straight_distance_count(cursor, study_area_id: int) ->
     ON
         residence_id = r.id
     WHERE
-        r.study_area_id = %s
+        r.study_area_id = %(study_area_id)s
+    {extra_where_sql}
     """
-    params = (study_area_id, )
     cursor.execute(sql, params)
 
     result = cursor.fetchone()

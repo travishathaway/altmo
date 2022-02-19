@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Sequence
 from itertools import islice
 from typing import Iterable
 
@@ -96,7 +97,7 @@ def get_residence_composite_as_dicts(cols: tuple, data: list[tuple]) -> list[dic
 
 
 def get_residence_composite_as_geojson(
-    cols: tuple, data: list[tuple], props: tuple = None
+    cols: Sequence, data: list[tuple], props: Sequence[str] = None
 ) -> dict:
     """
     Gets the residence composite results as geojson dict.
@@ -121,7 +122,7 @@ def get_residence_composite_as_geojson(
                 "properties": {
                     x: round(float(y), ndigits=5)
                     for x, y in row_data.items()
-                    if x in props
+                    if x in props and y is not None
                 },
             }
         )

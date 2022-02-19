@@ -16,8 +16,8 @@ class ResultSetContainer(abc.ABC):
         self.cursor = cur
         self.study_area_id = study_area_id
         self.batch_size = batch_size
-        self._count = self._get_result_set_count()
         self.query_kwargs = query_kwargs if query_kwargs else {}
+        self._count = self._get_result_set_count()
 
     def __repr__(self):
         return (
@@ -52,7 +52,9 @@ class StraightDistanceResultSetContainer(ResultSetContainer):
     Implementation of ResultSetContainer that uses the `get_residence_amenity_straight_distance*` functions
     """
     def _get_result_set_count(self) -> int:
-        return get_residence_amenity_straight_distance_count(self.cursor, self.study_area_id)
+        return get_residence_amenity_straight_distance_count(
+            self.cursor, self.study_area_id, **self.query_kwargs
+        )
 
     def _get_result_set_func(self, *args, **kwargs) -> Callable:
         return get_residence_amenity_straight_distance

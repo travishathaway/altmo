@@ -94,7 +94,7 @@ def network_distances(cur: psycopg2_cursor, study_area, mode, category, name, ou
     result_set = StraightDistanceResultSetContainer(
         cur,
         study_area_id=study_area,
-        batch_size=500_000,
+        batch_size=10_000_000,
         query_kwargs={'category': category, 'name': name, 'sample': sample}
     )
 

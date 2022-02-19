@@ -70,7 +70,7 @@ class WriterBatch(abc.ABC):
 
     def register(self, queue: asyncio.Queue) -> None:
         """
-        Sets the consumers property by registering however many consumers were specified in `batch_size`
+        Creates a task and then adds our _handle_results callback
         """
         def _handle_result(task_: asyncio.Task) -> None:
             try:
@@ -131,7 +131,9 @@ class ValhallaReaderBatch(ReaderBatch):
         """
         self._producers = []
         for residence, amenities in self._group_data_by_residence().items():
-            for idx, amt_batch in enumerate(grouper(amenities, size=self.VALHALLA_BATCH_LIMIT), start=1):
+            group = grouper(amenities, size=self.VALHALLA_BATCH_LIMIT)
+
+            for idx, amt_batch in enumerate(group, start=1):
                 task = asyncio.create_task(self.produce(queue, residence, amt_batch))
                 self._producers.append(task)
                 logger.info(f'Adding Task {idx} for {residence}')
@@ -186,7 +188,8 @@ class StdOutWriterBatch(WriterBatch):
                     db_data.amenity_id, db_data.residence_id,
                     self.config.costing
                 )
-                sys.stdout.write(f'{row}\n')
+                str_row = (str(fld) for fld in row)
+                sys.stdout.write(f'{",".join(str_row)}\n')
             queue.task_done()
 
 
